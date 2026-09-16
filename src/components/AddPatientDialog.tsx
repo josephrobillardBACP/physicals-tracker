@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { fromInputDate } from "../lib/dates";
 import { titleCase } from "../lib/logic";
-import { Membership, PatientInput } from "../lib/types";
+import { PatientInput } from "../lib/types";
 import { Modal, Spinner } from "./ui";
 
 export function AddPatientDialog({
@@ -16,7 +16,6 @@ export function AddPatientDialog({
   const [first, setFirst] = useState("");
   const [last, setLast] = useState("");
   const [dob, setDob] = useState("");
-  const [membership, setMembership] = useState<Membership>("Active");
   const [lastPhysical, setLastPhysical] = useState("");
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
@@ -33,8 +32,7 @@ export function AddPatientDialog({
         firstName: titleCase(first.trim()),
         lastName: titleCase(last.trim()),
         dob: fromInputDate(dob),
-        membership,
-        lastPhysical: fromInputDate(lastPhysical),
+            lastPhysical: fromInputDate(lastPhysical),
         nextPhysical: "",
         outreachStatus: "",
         notes: notes.trim(),
@@ -89,13 +87,6 @@ export function AddPatientDialog({
         <div>
           <label className="label" htmlFor="ap-dob">Date of birth</label>
           <input id="ap-dob" className="field" type="date" value={dob} onChange={(e) => setDob(e.target.value)} />
-        </div>
-        <div>
-          <label className="label" htmlFor="ap-mem">Membership</label>
-          <select id="ap-mem" className="field" value={membership} onChange={(e) => setMembership(e.target.value as Membership)}>
-            <option>Active</option>
-            <option>Unpaid</option>
-          </select>
         </div>
         <div className="sm:col-span-2">
           <label className="label" htmlFor="ap-lp">Last physical</label>

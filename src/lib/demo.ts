@@ -15,7 +15,6 @@ function mk(p: Partial<Patient> & Pick<Patient, "firstName" | "lastName">): Pati
   return {
     id: newId(),
     dob: "",
-    membership: "Active",
     lastPhysical: "",
     nextPhysical: "",
     outreachStatus: "",
@@ -33,7 +32,7 @@ const seed: Record<string, Patient[]> = {
     mk({ firstName: "Harold", lastName: "Whitcombe", dob: "3/14/1941", lastPhysical: d(-420) }),
     mk({ firstName: "Marjorie", lastName: "Ellsworth", dob: "9/2/1950", lastPhysical: d(-380), outreachStatus: "Left Voicemail", notes: "Prefers mornings." }),
     mk({ firstName: "Desmond", lastName: "Okafor", dob: "11/30/1962", lastPhysical: d(-370), outreachStatus: "Sent Message" }),
-    mk({ firstName: "Lucinda", lastName: "Pratt", dob: "1/8/1938", membership: "Unpaid", lastPhysical: d(-400) }),
+    mk({ firstName: "Lucinda", lastName: "Pratt", dob: "1/8/1938", lastPhysical: d(-400) }),
     mk({ firstName: "Teodoro", lastName: "Mancini", dob: "6/21/1957" }),
     mk({ firstName: "Priya", lastName: "Raghunathan", dob: "4/4/1979", lastPhysical: d(-365), nextPhysical: d(12) }),
     mk({ firstName: "Winifred", lastName: "Castellanos", dob: "7/19/1934", lastPhysical: d(-390), outreachStatus: "Patient Calling Back" }),

@@ -1,5 +1,3 @@
-export type Membership = "Active" | "Unpaid";
-
 export const CONTACT_STATUSES = [
   "Sent Message",
   "Left Voicemail",
@@ -21,7 +19,6 @@ export interface Patient {
   firstName: string;
   lastName: string;
   dob: string; // M/D/YYYY or ""
-  membership: Membership;
   lastPhysical: string; // M/D/YYYY or ""
   nextPhysical: string; // M/D/YYYY or "" (the scheduled appointment)
   outreachStatus: OutreachStatus;
@@ -47,6 +44,15 @@ export const STAGE_LABEL: Record<Stage, string> = {
   not_needed: "No physical needed",
 };
 
+export type SortMode = "action" | "name" | "recent" | "oldest";
+
+export const SORT_LABEL: Record<SortMode, string> = {
+  action: "Needs attention first",
+  name: "Last name (A–Z)",
+  recent: "Most recent physical",
+  oldest: "Oldest physical",
+};
+
 export interface User {
   email: string;
   name: string;
@@ -59,7 +65,6 @@ export const SHEET_HEADERS = [
   "First Name",
   "Last Name",
   "Date of Birth",
-  "Membership",
   "Last Physical",
   "Next Outreach",
   "Next Physical",

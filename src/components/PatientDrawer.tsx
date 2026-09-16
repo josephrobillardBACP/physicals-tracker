@@ -2,7 +2,7 @@ import { Trash2 } from "lucide-react";
 import { useState } from "react";
 import { ageFrom, formatShort, fromInputDate, nextOutreachFor, toInputDate } from "../lib/dates";
 import { stageOf } from "../lib/logic";
-import { BOOKED, CONTACT_STATUSES, Membership, OutreachStatus, Patient, PatientInput, STAGE_LABEL } from "../lib/types";
+import { BOOKED, CONTACT_STATUSES, OutreachStatus, Patient, PatientInput, STAGE_LABEL } from "../lib/types";
 import { Modal, Pill, Spinner } from "./ui";
 
 export function PatientDrawer({
@@ -19,7 +19,6 @@ export function PatientDrawer({
   const [first, setFirst] = useState(patient.firstName);
   const [last, setLast] = useState(patient.lastName);
   const [dob, setDob] = useState(toInputDate(patient.dob));
-  const [membership, setMembership] = useState<Membership>(patient.membership);
   const [lastPhysical, setLastPhysical] = useState(toInputDate(patient.lastPhysical));
   const [nextPhysical, setNextPhysical] = useState(toInputDate(patient.nextPhysical));
   const [status, setStatus] = useState<OutreachStatus>(patient.outreachStatus);
@@ -33,7 +32,6 @@ export function PatientDrawer({
     firstName: first,
     lastName: last,
     dob: fromInputDate(dob),
-    membership,
     lastPhysical: fromInputDate(lastPhysical),
     nextPhysical: fromInputDate(nextPhysical),
     outreachStatus: status,
@@ -123,13 +121,6 @@ export function PatientDrawer({
         <div>
           <label className="label" htmlFor="pd-dob">Date of birth</label>
           <input id="pd-dob" className="field" type="date" value={dob} onChange={(e) => setDob(e.target.value)} />
-        </div>
-        <div>
-          <label className="label" htmlFor="pd-mem">Membership</label>
-          <select id="pd-mem" className="field" value={membership} onChange={(e) => setMembership(e.target.value as Membership)}>
-            <option>Active</option>
-            <option>Unpaid</option>
-          </select>
         </div>
 
         <div className="sm:col-span-2 h-px bg-navy/10 my-1" />

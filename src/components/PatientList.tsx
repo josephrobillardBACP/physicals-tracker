@@ -97,7 +97,7 @@ function Actions({ p, a, stage, busy }: { p: Patient; a: RowActions; stage: Stag
     case "in_progress":
       return (
         <div className="flex flex-wrap items-center gap-2">
-          <StatusSelect p={p} a={a} className="w-48" />
+          <StatusSelect p={p} a={a} className="w-44" />
           <ScheduleInput p={p} a={a} />
         </div>
       );
@@ -149,11 +149,11 @@ function NameCell({ p, a }: { p: Patient; a: RowActions }) {
   const age = ageFrom(p.dob);
   return (
     <button className="group text-left" onClick={() => a.onOpen(p)}>
-      <span className="font-semibold text-navy group-hover:underline inline-flex items-center gap-1">
+      <span className="font-semibold text-navy group-hover:underline inline-flex items-center gap-1 whitespace-nowrap">
         {p.lastName}, {p.firstName}
-        <ChevronRight className="h-4 w-4 text-muted opacity-0 group-hover:opacity-100 transition-opacity" />
+        <ChevronRight className="h-4 w-4 shrink-0 text-muted opacity-0 group-hover:opacity-100 transition-opacity" />
       </span>
-      <span className="block text-xs text-muted">
+      <span className="block text-xs text-muted whitespace-nowrap">
         {p.dob ? (
           <>
             DOB {p.dob}
@@ -162,7 +162,6 @@ function NameCell({ p, a }: { p: Patient; a: RowActions }) {
         ) : (
           "DOB unknown"
         )}
-        {p.membership === "Unpaid" && <span className="ml-2 rounded-md bg-amber-100 text-amber-900 px-1.5 py-0.5 font-semibold">Unpaid</span>}
       </span>
     </button>
   );
@@ -172,14 +171,14 @@ export function PatientList({ patients, actions, busyId }: { patients: Patient[]
   return (
     <>
       {/* Desktop table */}
-      <div className="hidden md:block card overflow-hidden">
+      <div className="hidden md:block card overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-sand/60 text-xs uppercase tracking-wide text-muted">
             <tr>
-              <th className="text-left font-semibold px-4 py-3">Patient</th>
+              <th className="text-left font-semibold px-4 py-3 whitespace-nowrap">Patient</th>
               <th className="text-left font-semibold px-4 py-3">Status</th>
-              <th className="text-left font-semibold px-4 py-3">Last physical</th>
-              <th className="text-left font-semibold px-4 py-3">Outreach due</th>
+              <th className="text-left font-semibold px-4 py-3 whitespace-nowrap">Last physical</th>
+              <th className="text-left font-semibold px-4 py-3 whitespace-nowrap">Outreach due</th>
               <th className="text-left font-semibold px-4 py-3 w-[22rem]">Action</th>
               <th className="w-10"><span className="sr-only">Remove</span></th>
             </tr>
@@ -189,7 +188,7 @@ export function PatientList({ patients, actions, busyId }: { patients: Patient[]
               const stage = stageOf(p);
               return (
                 <tr key={p.id} className="hover:bg-cream/50 align-middle">
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 w-px">
                     <NameCell p={p} a={actions} />
                   </td>
                   <td className="px-4 py-3">
@@ -198,8 +197,8 @@ export function PatientList({ patients, actions, busyId }: { patients: Patient[]
                       {stageDetail(p, stage) && <span className="font-normal opacity-80">· {stageDetail(p, stage)}</span>}
                     </Pill>
                   </td>
-                  <td className="px-4 py-3 text-ink">{formatShort(p.lastPhysical)}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 text-ink whitespace-nowrap">{formatShort(p.lastPhysical)}</td>
+                  <td className="px-4 py-3 whitespace-nowrap">
                     <OutreachDue p={p} />
                   </td>
                   <td className="px-4 py-3">

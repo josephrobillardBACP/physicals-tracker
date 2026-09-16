@@ -1,0 +1,46 @@
+rules_version = '2';
+
+// Security rules for the annual physicals data.
+//
+// IMPORTANT: if this project also hosts the travel medicine workflow, do NOT
+// paste this file over the existing rules. Copy the helper functions (if they
+// are not already there) and the `match /physicals/...` block into the existing
+// `match /databases/{database}/documents { ... }` block, then publish.
+//
+// Nothing here is readable without a signed-in account on the clinic's
+// Workspace domain, or an address an admin has added to admin/allowlist.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null && request.auth.token.email != null;
+    }
+
+    function email() {
+      return request.auth.token.email.lower();
+    }
+
+    function onDomain() {
+      return email().matches('.*@blueangelclinical[.]com');
+    }
+
+    // Individual outside addresses granted access through the shared admin page.
+    function onAllowlist() {
+      return exists(/databases/$(database)/documents/admin/allowlist)
+        && get(/databases/$(database)/documents/admin/allowlist).data.emails[email()] != null;
+    }
+
+    function staff() {
+      return signedIn() && (onDomain() || onAllowlist());
+    }
+
+    match /physicals/{panelId} {
+      allow read, write: if staff();
+
+      match /patients/{patientId} {
+        allow read, write: if staff();
+      }
+    }
+  }
+}

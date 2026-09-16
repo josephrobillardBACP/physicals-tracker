@@ -1,21 +1,20 @@
-import { ChevronDown, LogOut, Plus, RefreshCw, Search } from "lucide-react";
+import { ChevronDown, LogOut, Plus, RefreshCw, Search, Upload } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AddPatientDialog } from "./components/AddPatientDialog";
 import { PatientDrawer } from "./components/PatientDrawer";
 import { PatientList } from "./components/PatientList";
 import { SignIn } from "./components/SignIn";
 import { Modal, Pill, Spinner, STAGE_STYLE, ToastProvider, useToast } from "./components/ui";
-import { loadSession, saveSession, Session, signIn, signOut } from "./lib/auth";
+import { AUTH_CONFIGURED, signIn, signOutNow, watchAuth } from "./lib/auth";
+import { readPatientCsv } from "./lib/csv";
 import { DemoSource } from "./lib/demo";
+import { FirestoreSource } from "./lib/firestore";
 import { matches, rollForward, sortPatients, stageOf } from "./lib/logic";
-import { SheetsSource } from "./lib/sheets";
 import { DataSource, Panel } from "./lib/store";
-import { Patient, PatientInput, Stage, STAGE_LABEL, STAGE_ORDER, User } from "./lib/types";
+import { Patient, PatientInput, SORT_LABEL, SortMode, Stage, STAGE_LABEL, STAGE_ORDER, User } from "./lib/types";
 
-const SHEET_ID = (import.meta.env.VITE_SHEET_ID as string | undefined) ?? "";
 const DEMO_ONLY = (import.meta.env.VITE_DEMO_ONLY as string | undefined) === "1";
 const DEMO_ALLOWED = DEMO_ONLY || import.meta.env.DEV || new URLSearchParams(location.search).has("demo");
-const REFRESH_MS = 90_000;
 
 export default function App() {
   return (
@@ -26,58 +25,47 @@ export default function App() {
 }
 
 function Root() {
-  const [session, setSession] = useState<Session | null>(() => loadSession());
+  const [user, setUser] = useState<User | null>(null);
+  const [authReady, setAuthReady] = useState(!AUTH_CONFIGURED);
+  const [rejected, setRejected] = useState<string | null>(null);
   const [demo, setDemo] = useState(DEMO_ONLY);
-  const [notice, setNotice] = useState<string | null>(null);
-  const sessionRef = useRef(session);
-  sessionRef.current = session;
+
+  useEffect(() => {
+    if (!AUTH_CONFIGURED) return;
+    return watchAuth((u, why) => {
+      setUser(u);
+      setRejected(why ?? null);
+      setAuthReady(true);
+    });
+  }, []);
 
   const source = useMemo<DataSource | null>(() => {
     if (demo) return new DemoSource();
-    if (!session) return null;
-    return new SheetsSource(SHEET_ID, async () => {
-      const s = sessionRef.current;
-      if (s && s.expiresAt > Date.now()) return s.accessToken;
-      try {
-        const fresh = await signIn(true, s?.user.email);
-        setSession(fresh);
-        return fresh.accessToken;
-      } catch (e) {
-        // Silent refresh failed (popup blocked, consent revoked, signed out of Google):
-        // send the user back to the sign-in screen instead of leaving a broken session.
-        saveSession(null);
-        setSession(null);
-        setNotice("Your session expired. Please sign in again.");
-        throw e;
-      }
-    });
-  }, [demo, session?.user.email]); // eslint-disable-line react-hooks/exhaustive-deps
+    return user ? new FirestoreSource() : null;
+  }, [demo, user]);
 
-  const user: User | null = demo ? { email: "preview@example.com", name: "Preview" } : (session?.user ?? null);
+  const activeUser: User | null = demo ? { email: "preview@example.com", name: "Preview" } : user;
 
-  if (!source || !user) {
+  if (!authReady && !demo) {
     return (
-      <SignIn
-        onSignIn={async () => {
-          setSession(await signIn(false));
-          setNotice(null);
-        }}
-        onDemo={DEMO_ALLOWED ? () => setDemo(true) : undefined}
-        notice={notice}
-      />
+      <main className="min-h-screen flex items-center justify-center text-muted">
+        <Spinner />
+      </main>
     );
+  }
+
+  if (!source || !activeUser) {
+    return <SignIn onSignIn={signIn} onDemo={DEMO_ALLOWED ? () => setDemo(true) : undefined} notice={rejected} />;
   }
 
   return (
     <Tracker
       source={source}
-      user={user}
+      user={activeUser}
       demo={demo}
       onSignOut={() => {
-        signOut(session);
-        saveSession(null);
-        setSession(null);
         setDemo(false);
+        void signOutNow();
       }}
     />
   );
@@ -93,13 +81,38 @@ function Tracker({ source, user, demo, onSignOut }: { source: DataSource; user: 
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Stage | "all">("all");
   const [query, setQuery] = useState("");
+  const [sortMode, setSortMode] = useState<SortMode>("action");
   const [adding, setAdding] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const [removing, setRemoving] = useState<Patient | null>(null);
+  const [importing, setImporting] = useState(false);
 
-  // ---- Load panels once, then patients per panel -------------------------
+  /**
+   * Rows stay put while staff work. `orderIds` is the frozen order, recomputed
+   * only on an explicit action: Refresh, a sort or filter change, adding a
+   * patient, or confirming a completed physical. Setting a status or typing a
+   * date never moves a row out from under the person editing it.
+   */
+  const [orderIds, setOrderIds] = useState<string[]>([]);
+  const patientsRef = useRef<Patient[]>([]);
+  patientsRef.current = patients;
+
+  const resort = useCallback(
+    (list?: Patient[]) => {
+      const all = list ?? patientsRef.current;
+      const shown = all.filter((p) => (filter === "all" || stageOf(p) === filter) && matches(p, query));
+      setOrderIds(sortPatients(shown, sortMode).map((p) => p.id));
+    },
+    [filter, query, sortMode],
+  );
+
+  // Changing what you are looking at re-evaluates the list; editing does not.
+  useEffect(() => {
+    resort();
+  }, [resort]);
+
+  // ---- Panels ------------------------------------------------------------
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -109,7 +122,7 @@ function Tracker({ source, user, demo, onSignOut }: { source: DataSource; user: 
         setPanels(ps);
         const remembered = localStorage.getItem("physicals.panel");
         setPanel(ps.find((p) => p.title === remembered) ?? ps[0] ?? null);
-        if (ps.length === 0) setError("The spreadsheet has no tabs. Add one tab per doctor.");
+        if (ps.length === 0) setError("No practices are set up yet.");
       } catch (e) {
         if (alive) setError((e as Error).message);
       } finally {
@@ -121,6 +134,7 @@ function Tracker({ source, user, demo, onSignOut }: { source: DataSource; user: 
     };
   }, [source]);
 
+  // ---- Patients ----------------------------------------------------------
   const load = useCallback(
     async (quiet = false) => {
       if (!panel) return;
@@ -128,7 +142,7 @@ function Tracker({ source, user, demo, onSignOut }: { source: DataSource; user: 
       try {
         const list = await source.listPatients(panel);
         setPatients(list);
-        setUpdatedAt(new Date());
+        resort(list);
         setError(null);
       } catch (e) {
         setError((e as Error).message);
@@ -137,28 +151,54 @@ function Tracker({ source, user, demo, onSignOut }: { source: DataSource; user: 
         setRefreshing(false);
       }
     },
-    [source, panel],
+    [source, panel, resort],
   );
 
+  // Live updates keep the data current while the visible order stays frozen.
   useEffect(() => {
-    if (panel) {
-      localStorage.setItem("physicals.panel", panel.title);
-      setFilter("all");
-      setQuery("");
-      load();
-    }
-  }, [panel, load]);
+    if (!panel) return;
+    setFilter("all");
+    setQuery("");
+    localStorage.setItem("physicals.panel", panel.title);
 
-  // Keep the list fresh when several staff are working at once.
-  useEffect(() => {
-    const t = window.setInterval(() => document.visibilityState === "visible" && load(true), REFRESH_MS);
-    const onVis = () => document.visibilityState === "visible" && load(true);
-    document.addEventListener("visibilitychange", onVis);
-    return () => {
-      window.clearInterval(t);
-      document.removeEventListener("visibilitychange", onVis);
-    };
-  }, [load]);
+    if (!source.subscribe) {
+      void load();
+      return;
+    }
+    setLoading(true);
+    let first = true;
+    const stop = source.subscribe(
+      panel,
+      (list) => {
+        setPatients(list);
+        if (first) {
+          resort(list);
+          first = false;
+        }
+        setLoading(false);
+        setError(null);
+      },
+      (e) => {
+        setError(e.message);
+        setLoading(false);
+      },
+    );
+    return stop;
+    // `resort` is intentionally not a dependency: re-subscribing whenever the
+    // filter changes would reset the frozen order.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [source, panel]);
+
+  const refresh = () => {
+    if (source.subscribe) {
+      // Data is already live; Refresh is what re-sorts and reveals new rows.
+      setRefreshing(true);
+      resort();
+      window.setTimeout(() => setRefreshing(false), 250);
+    } else {
+      void load(true);
+    }
+  };
 
   // ---- Mutations ---------------------------------------------------------
   const replace = (p: Patient) => setPatients((list) => list.map((x) => (x.id === p.id ? p : x)));
@@ -167,15 +207,22 @@ function Tracker({ source, user, demo, onSignOut }: { source: DataSource; user: 
     if (!panel) return;
     setBusyId(p.id);
     try {
-      const saved = await source.updatePatient(panel, p.id, changes, user);
-      replace(saved);
+      replace(await source.updatePatient(panel, p.id, changes, user));
       if (msg) toast({ kind: "ok", text: msg });
     } catch (e) {
       toast({ kind: "error", text: (e as Error).message });
-      load(true);
     } finally {
       setBusyId(null);
     }
+  };
+
+  const add = async (input: PatientInput) => {
+    if (!panel) return;
+    const saved = await source.addPatient(panel, input, user);
+    const next = [...patientsRef.current.filter((p) => p.id !== saved.id), saved];
+    setPatients(next);
+    resort(next);
+    toast({ kind: "ok", text: `Added ${saved.firstName} ${saved.lastName} to ${panel.title}.` });
   };
 
   const confirmComplete = async (p: Patient) => {
@@ -184,7 +231,9 @@ function Tracker({ source, user, demo, onSignOut }: { source: DataSource; user: 
     setBusyId(p.id);
     try {
       const saved = await source.updatePatient(panel, p.id, rollForward(p), user);
-      replace(saved);
+      const next = patientsRef.current.map((x) => (x.id === saved.id ? saved : x));
+      setPatients(next);
+      resort(next); // this patient is done for the year, so the list re-orders here
       toast({
         kind: "ok",
         text: `${p.firstName} ${p.lastName} is set for next year (last physical ${saved.lastPhysical}).`,
@@ -201,52 +250,57 @@ function Tracker({ source, user, demo, onSignOut }: { source: DataSource; user: 
       });
     } catch (e) {
       toast({ kind: "error", text: (e as Error).message });
-      load(true);
     } finally {
       setBusyId(null);
     }
   };
 
-  const add = async (input: PatientInput) => {
-    if (!panel) return;
-    const saved = await source.addPatient(panel, input, user);
-    setPatients((list) => [...list, saved]);
-    toast({ kind: "ok", text: `Added ${saved.firstName} ${saved.lastName} to ${panel.title}.` });
-  };
-
-  const remove = async (p: Patient) => {
-    if (!panel) return;
-    await source.deletePatient(panel, p.id);
-    setPatients((list) => list.filter((x) => x.id !== p.id));
-    const { id: _id, updatedAt: _u, updatedBy: _b, ...snapshot } = p;
-    toast({
-      kind: "ok",
-      text: `Removed ${p.firstName} ${p.lastName}.`,
-      action: {
-        label: "Undo",
-        run: async () => {
-          try {
-            const restored = await source.addPatient(panel, snapshot, user);
-            setPatients((list) => [...list, restored]);
-          } catch (e) {
-            toast({ kind: "error", text: (e as Error).message });
-          }
-        },
-      },
-    });
-  };
-
   const confirmRemove = async () => {
     const p = removing;
-    if (!p) return;
+    if (!p || !panel) return;
     setRemoving(null);
     setBusyId(p.id);
     try {
-      await remove(p);
+      await source.deletePatient(panel, p.id);
+      setPatients((list) => list.filter((x) => x.id !== p.id));
+      const { id: _id, updatedAt: _u, updatedBy: _b, ...snapshot } = p;
+      toast({
+        kind: "ok",
+        text: `Removed ${p.firstName} ${p.lastName}.`,
+        action: {
+          label: "Undo",
+          run: async () => {
+            try {
+              await add(snapshot);
+            } catch (e) {
+              toast({ kind: "error", text: (e as Error).message });
+            }
+          },
+        },
+      });
     } catch (e) {
       toast({ kind: "error", text: (e as Error).message });
     } finally {
       setBusyId(null);
+    }
+  };
+
+  const importCsv = async (file: File) => {
+    if (!panel || !source.importPatients) return;
+    setImporting(true);
+    try {
+      const { rows, missing } = readPatientCsv(await file.text());
+      if (missing.length) throw new Error(`That file needs ${missing.join(" and ")} columns.`);
+      if (!rows.length) throw new Error("No patients found in that file.");
+      const n = await source.importPatients(panel, rows, user);
+      const list = await source.listPatients(panel);
+      setPatients(list);
+      resort(list);
+      toast({ kind: "ok", text: `Imported ${n} patients into ${panel.title}.` });
+    } catch (e) {
+      toast({ kind: "error", text: (e as Error).message });
+    } finally {
+      setImporting(false);
     }
   };
 
@@ -257,29 +311,37 @@ function Tracker({ source, user, demo, onSignOut }: { source: DataSource; user: 
     return c;
   }, [patients]);
 
-  const visible = useMemo(
-    () => sortPatients(patients.filter((p) => (filter === "all" || stageOf(p) === filter) && matches(p, query))),
-    [patients, filter, query],
-  );
+  const byId = useMemo(() => new Map(patients.map((p) => [p.id, p])), [patients]);
+  const visible = useMemo(() => orderIds.map((id) => byId.get(id)).filter((p): p is Patient => Boolean(p)), [orderIds, byId]);
+
+  // Patients added elsewhere, or now matching the filter, since the last sort.
+  const pending = useMemo(() => {
+    const shown = new Set(orderIds);
+    return patients.filter((p) => !shown.has(p.id) && (filter === "all" || stageOf(p) === filter) && matches(p, query)).length;
+  }, [patients, orderIds, filter, query]);
 
   const open = openId ? patients.find((p) => p.id === openId) : undefined;
 
   // ---- Render ------------------------------------------------------------
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-30 bg-cream/90 backdrop-blur border-b border-navy/10">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center gap-3">
-          <h1 className="font-serif text-2xl font-semibold text-navy leading-tight mr-2">Annual Physicals Tracker</h1>
+      <div className="bg-navy text-white">
+        <div className="max-w-6xl mx-auto px-4 py-3">
+          <h1 className="font-serif text-2xl sm:text-3xl font-semibold tracking-tight">Annual Physicals Tracker</h1>
+        </div>
+      </div>
 
+      <header className="sticky top-0 z-30 bg-cream/95 backdrop-blur border-b border-navy/10">
+        <div className="max-w-6xl mx-auto px-4 py-2.5 flex flex-wrap items-center gap-x-3 gap-y-2">
           {panels.length > 0 && (
-            <div className="flex items-center gap-2 order-last w-full sm:order-none sm:w-auto">
-              <span className="text-xs font-semibold uppercase tracking-wide text-muted">Doctor</span>
-              <label className="relative flex-1 sm:flex-none">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted">Practice</span>
+              <label className="relative">
                 <select
-                  className="w-full appearance-none rounded-full border border-navy/15 bg-white pl-4 pr-9 py-2 text-sm font-semibold text-navy shadow-sm hover:border-navy/40 cursor-pointer"
+                  className="appearance-none rounded-full border border-navy/15 bg-white pl-4 pr-9 py-1.5 text-sm font-semibold text-navy shadow-sm hover:border-navy/40 cursor-pointer"
                   value={panel?.id ?? ""}
                   onChange={(e) => setPanel(panels.find((p) => p.id === e.target.value) ?? null)}
-                  aria-label="Doctor"
+                  aria-label="Practice"
                 >
                   {panels.map((p) => (
                     <option key={p.id} value={p.id}>
@@ -301,7 +363,7 @@ function Tracker({ source, user, demo, onSignOut }: { source: DataSource; user: 
                 {user.name.slice(0, 1).toUpperCase()}
               </span>
             )}
-            <span className="hidden sm:block text-sm text-muted max-w-[10rem] truncate">{user.name}</span>
+            <span className="hidden sm:block text-sm text-muted max-w-[12rem] truncate">{user.name}</span>
             <button className="btn-ghost px-2" onClick={onSignOut} title="Sign out" aria-label="Sign out">
               <LogOut className="h-4 w-4" />
             </button>
@@ -310,7 +372,6 @@ function Tracker({ source, user, demo, onSignOut }: { source: DataSource; user: 
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-5">
-        {/* Summary / filter chips */}
         <div className="flex flex-wrap gap-2">
           <Chip on={filter === "all"} onClick={() => setFilter("all")} label="All" n={patients.length} />
           {STAGE_ORDER.map((s) => (
@@ -318,13 +379,29 @@ function Tracker({ source, user, demo, onSignOut }: { source: DataSource; user: 
           ))}
         </div>
 
-        {/* Toolbar */}
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          <label className="relative flex-1 min-w-[14rem]">
+          <label className="relative flex-1 min-w-[13rem]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted" aria-hidden="true" />
             <input className="field pl-9" placeholder="Search by name or date of birth" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search patients" />
           </label>
-          <button className="btn-secondary" onClick={() => load(true)} disabled={refreshing || loading} title="Reload the list from the spreadsheet">
+
+          <label className="relative">
+            <select
+              className="appearance-none rounded-xl border border-navy/15 bg-white pl-3 pr-9 py-2 text-sm text-ink cursor-pointer hover:border-navy/40"
+              value={sortMode}
+              onChange={(e) => setSortMode(e.target.value as SortMode)}
+              aria-label="Sort patients"
+            >
+              {(Object.keys(SORT_LABEL) as SortMode[]).map((m) => (
+                <option key={m} value={m}>
+                  Sort: {SORT_LABEL[m]}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted pointer-events-none" aria-hidden="true" />
+          </label>
+
+          <button className="btn-secondary" onClick={refresh} disabled={refreshing || loading} title="Re-sort the list and pull in anything new">
             <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
             Refresh
           </button>
@@ -342,17 +419,43 @@ function Tracker({ source, user, demo, onSignOut }: { source: DataSource; user: 
           </div>
         )}
 
+        {pending > 0 && (
+          <button
+            className="mt-4 w-full rounded-xl bg-sky-50 border border-sky-200 text-sky-900 text-sm px-4 py-2 text-left hover:bg-sky-100"
+            onClick={refresh}
+          >
+            {pending} {pending === 1 ? "patient is" : "patients are"} not in this list yet. Refresh to include {pending === 1 ? "it" : "them"}.
+          </button>
+        )}
+
         <div className="mt-4">
           {loading ? (
             <div className="flex items-center justify-center gap-3 py-20 text-muted">
               <Spinner /> Loading {panel?.title ?? ""}…
             </div>
           ) : visible.length === 0 ? (
-            <div className="card py-16 text-center text-muted">
+            <div className="card py-16 px-6 text-center text-muted">
               {patients.length === 0 ? (
                 <>
                   <p className="font-serif text-2xl text-navy">No patients yet</p>
-                  <p className="mt-1 text-sm">Use “Add patient” to start {panel?.title}’s list.</p>
+                  <p className="mt-1 text-sm">Add patients one at a time, or bring the whole list across from a spreadsheet export.</p>
+                  {source.importPatients && (
+                    <label className="btn-secondary mt-4 cursor-pointer inline-flex">
+                      {importing ? <Spinner className="h-4 w-4" /> : <Upload className="h-4 w-4" />}
+                      {importing ? "Importing…" : "Import from CSV"}
+                      <input
+                        type="file"
+                        accept=".csv,text/csv"
+                        className="hidden"
+                        disabled={importing}
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          e.target.value = "";
+                          if (f) void importCsv(f);
+                        }}
+                      />
+                    </label>
+                  )}
                 </>
               ) : query ? (
                 <p>No patients match “{query}”.</p>
@@ -361,13 +464,16 @@ function Tracker({ source, user, demo, onSignOut }: { source: DataSource; user: 
               )}
             </div>
           ) : (
-            <PatientList patients={visible} busyId={busyId} actions={{ onOpen: (p) => setOpenId(p.id), onPatch: patch, onConfirmComplete: confirmComplete, onRemove: setRemoving }} />
+            <PatientList
+              patients={visible}
+              busyId={busyId}
+              actions={{ onOpen: (p) => setOpenId(p.id), onPatch: patch, onConfirmComplete: confirmComplete, onRemove: setRemoving }}
+            />
           )}
         </div>
 
         <p className="mt-4 text-xs text-muted text-center">
-          {updatedAt && `Updated ${updatedAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}. `}
-          Outreach is due at the end of the month, 11 months after the last physical.
+          Outreach is due at the end of the month, 11 months after the last physical. The list keeps its order while you work; Refresh re-sorts it.
         </p>
       </main>
 
@@ -402,7 +508,10 @@ function Tracker({ source, user, demo, onSignOut }: { source: DataSource; user: 
           patient={open}
           onClose={() => setOpenId(null)}
           onSave={(changes) => patch(open, changes, "Saved.")}
-          onDelete={() => remove(open)}
+          onDelete={async () => {
+            setOpenId(null);
+            setRemoving(open);
+          }}
         />
       )}
     </div>
@@ -410,7 +519,7 @@ function Tracker({ source, user, demo, onSignOut }: { source: DataSource; user: 
 }
 
 function Chip({ stage, on, onClick, label, n }: { stage?: Stage; on: boolean; onClick: () => void; label: string; n: number }) {
-  const style = stage ? STAGE_STYLE[stage] : { pill: "", dot: "", chip: "data-[on=true]:bg-navy" };
+  const style = stage ? STAGE_STYLE[stage] : { chip: "data-[on=true]:bg-navy" };
   return (
     <button
       data-on={on}
@@ -418,7 +527,13 @@ function Chip({ stage, on, onClick, label, n }: { stage?: Stage; on: boolean; on
       className={`inline-flex items-center gap-2 rounded-full border border-navy/10 bg-white px-3 py-1.5 text-sm font-semibold text-ink transition-colors hover:border-navy/30 data-[on=true]:text-white data-[on=true]:border-transparent ${style.chip}`}
       aria-pressed={on}
     >
-      {stage && !on ? <Pill stage={stage} className="!px-0 !py-0 !ring-0 !bg-transparent">{label}</Pill> : label}
+      {stage && !on ? (
+        <Pill stage={stage} className="!px-0 !py-0 !ring-0 !bg-transparent">
+          {label}
+        </Pill>
+      ) : (
+        label
+      )}
       <span className={`rounded-full px-1.5 text-xs ${on ? "bg-white/20" : "bg-sand text-muted"}`}>{n}</span>
     </button>
   );

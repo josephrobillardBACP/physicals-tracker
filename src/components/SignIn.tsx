@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ALLOWED_DOMAIN, CLIENT_ID } from "../lib/auth";
+import { ALLOWED_DOMAIN, AUTH_CONFIGURED } from "../lib/auth";
 import { Spinner } from "./ui";
 
 export function SignIn({ onSignIn, onDemo, notice }: { onSignIn: () => Promise<void>; onDemo?: () => void; notice?: string | null }) {
@@ -32,14 +32,14 @@ export function SignIn({ onSignIn, onDemo, notice }: { onSignIn: () => Promise<v
           )}
         </p>
 
-        {CLIENT_ID ? (
+        {AUTH_CONFIGURED ? (
           <button className="btn-primary w-full mt-6 py-3" onClick={go} disabled={busy}>
             {busy ? <Spinner /> : <GoogleMark />}
             {busy ? "Signing in…" : "Sign in with Google"}
           </button>
         ) : (
           <p className="mt-6 rounded-xl bg-amber-50 text-amber-900 text-sm p-3 text-left">
-            Google sign-in isn't configured yet. Set <code>VITE_GOOGLE_CLIENT_ID</code> and <code>VITE_SHEET_ID</code> (see README).
+            Sign-in isn&rsquo;t configured yet. Set the <code>VITE_FIREBASE_*</code> variables (see README).
           </p>
         )}
 

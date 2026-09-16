@@ -1,5 +1,5 @@
 import { nextOutreachFor, parseDate, today, toSheetDate } from "./dates";
-import { BOOKED, CONTACT_STATUSES, Patient, Stage, STAGE_ORDER } from "./types";
+import { BOOKED, CONTACT_STATUSES, Patient, SortMode, Stage, STAGE_ORDER } from "./types";
 
 export function stageOf(p: Patient): Stage {
   if (p.outreachStatus === "Not Needed") return "not_needed";
@@ -28,18 +28,36 @@ function sortKey(p: Patient, stage: Stage): number {
   }
 }
 
-/** Action-needed first, then by date; up-to-date patients sink to the bottom. */
-export function sortPatients(list: Patient[]): Patient[] {
-  return [...list]
-    .map((p) => ({ p, s: stageOf(p) }))
-    .sort((a, b) => {
-      const so = STAGE_ORDER.indexOf(a.s) - STAGE_ORDER.indexOf(b.s);
-      if (so !== 0) return so;
-      const k = sortKey(a.p, a.s) - sortKey(b.p, b.s);
-      if (k !== 0) return k;
-      return `${a.p.lastName} ${a.p.firstName}`.localeCompare(`${b.p.lastName} ${b.p.firstName}`);
-    })
-    .map((x) => x.p);
+function byName(a: Patient, b: Patient): number {
+  return `${a.lastName} ${a.firstName}`.localeCompare(`${b.lastName} ${b.firstName}`, undefined, { sensitivity: "base" });
+}
+
+/** Patients with no physical on record sort as the oldest possible. */
+function lastPhysicalTime(p: Patient): number {
+  return parseDate(p.lastPhysical)?.getTime() ?? -8.64e15;
+}
+
+export function sortPatients(list: Patient[], mode: SortMode = "action"): Patient[] {
+  const out = [...list];
+  switch (mode) {
+    case "name":
+      return out.sort(byName);
+    case "recent":
+      return out.sort((a, b) => lastPhysicalTime(b) - lastPhysicalTime(a) || byName(a, b));
+    case "oldest":
+      return out.sort((a, b) => lastPhysicalTime(a) - lastPhysicalTime(b) || byName(a, b));
+    case "action":
+      return out
+        .map((p) => ({ p, s: stageOf(p) }))
+        .sort((a, b) => {
+          const so = STAGE_ORDER.indexOf(a.s) - STAGE_ORDER.indexOf(b.s);
+          if (so !== 0) return so;
+          const k = sortKey(a.p, a.s) - sortKey(b.p, b.s);
+          if (k !== 0) return k;
+          return byName(a.p, b.p);
+        })
+        .map((x) => x.p);
+  }
 }
 
 /** True once the visit is booked but the date has not been filled in yet. */
