@@ -181,7 +181,7 @@ The Firebase CLI runs `npm install`, which fails inside a Google Drive folder.
 Copy the project to a local folder first, or pause Drive sync.
 
 **`functions/.env` already exists** at
-`G:\My Drive\Code\physicals-trackerunctions\.env`, filled in with safe
+`G:\My Drive\Code\physicals-tracker\functions\.env`, filled in with safe
 starting values. It is gitignored, so it never leaves your machine. Open it and
 change these two when you are ready:
 
