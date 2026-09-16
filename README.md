@@ -32,7 +32,7 @@ The list sorts action-needed patients to the top. Filter chips at the top show c
 
 ### 1. The spreadsheet
 
-1. Create a Google Sheet (or import the `Dr. Sujansky.csv` seed file from `G:My DriveCodephysicals-tracker-seed-data` via **File → Import** to start with the current roster; that folder is outside the repo on purpose because it holds patient data).
+1. Create a Google Sheet (or import the `Dr. Sujansky.csv` seed file from `G:\My Drive\Code\physicals-tracker-seed-data` via **File → Import** to start with the current roster; that folder is outside the repo on purpose because it holds patient data).
 2. Name the first tab **`Dr. Sujansky`** and add a second tab named **`Dr. Daniher`**. Every tab becomes a doctor on the toggle. A brand-new empty tab gets its header row written automatically the first time the app opens it.
 3. Row 1 of each tab must be exactly:
    `ID, First Name, Last Name, Date of Birth, Membership, Last Physical, Next Outreach, Next Physical, Outreach Status, Notes, Last Updated, Updated By, Hint ID`
