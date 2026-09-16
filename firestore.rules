@@ -13,33 +13,33 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function signedIn() {
+    function physicalsSignedIn() {
       return request.auth != null && request.auth.token.email != null;
     }
 
-    function email() {
+    function physicalsEmail() {
       return request.auth.token.email.lower();
     }
 
-    function onDomain() {
-      return email().matches('.*@blueangelclinical[.]com');
+    function physicalsOnDomain() {
+      return physicalsEmail().matches('.*@blueangelclinical[.]com');
     }
 
     // Individual outside addresses granted access through the shared admin page.
-    function onAllowlist() {
+    function physicalsOnAllowlist() {
       return exists(/databases/$(database)/documents/admin/allowlist)
-        && get(/databases/$(database)/documents/admin/allowlist).data.emails[email()] != null;
+        && get(/databases/$(database)/documents/admin/allowlist).data.emails[physicalsEmail()] != null;
     }
 
-    function staff() {
-      return signedIn() && (onDomain() || onAllowlist());
+    function physicalsStaff() {
+      return physicalsSignedIn() && (physicalsOnDomain() || physicalsOnAllowlist());
     }
 
     match /physicals/{panelId} {
-      allow read, write: if staff();
+      allow read, write: if physicalsStaff();
 
       match /patients/{patientId} {
-        allow read, write: if staff();
+        allow read, write: if physicalsStaff();
       }
     }
   }

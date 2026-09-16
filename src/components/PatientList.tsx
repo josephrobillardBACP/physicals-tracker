@@ -1,6 +1,7 @@
 import { CalendarPlus, Check, ChevronRight, Undo2, X } from "lucide-react";
-import { ageFrom, formatShort, fromInputDate, nextOutreachFor, parseDate, relative, today, toInputDate } from "../lib/dates";
-import { bookedWithoutDate, stageOf } from "../lib/logic";
+import { ageFrom, formatShort, fromInputDate, parseDate, relative, today, toInputDate } from "../lib/dates";
+import { bookedWithoutDate, isOutreachManual, outreachDueFor, stageOf } from "../lib/logic";
+import { EditableDate } from "./EditableDate";
 import { BOOKED, CONTACT_STATUSES, OutreachStatus, Patient, PatientInput, Stage, STAGE_LABEL } from "../lib/types";
 import { Pill, Spinner } from "./ui";
 
@@ -24,24 +25,55 @@ function stageDetail(p: Patient, stage: Stage): string {
   }
 }
 
-function OutreachDue({ p }: { p: Patient }) {
-  if (p.outreachStatus === "Not Needed") return <span className="text-muted">—</span>;
-  const due = nextOutreachFor(p.lastPhysical);
-  if (!due) return <span className="text-red-700 font-semibold">No physical on record</span>;
-  const d = parseDate(due)!;
-  const past = d <= today();
+function OutreachDue({ p, a }: { p: Patient; a: RowActions }) {
+  const due = outreachDueFor(p);
+  const manual = isOutreachManual(p);
+  const d = parseDate(due);
+  const past = d ? d <= today() : false;
+
+  const body =
+    p.outreachStatus === "Not Needed" ? (
+      <span className="text-muted">—</span>
+    ) : !d ? (
+      <span className="text-red-700 font-semibold">No physical on record</span>
+    ) : (
+      <span className={past ? "text-red-700" : "text-ink"}>
+        <span className="font-medium">{formatShort(due)}</span>
+        <span className={`block text-xs ${past ? "text-red-600 font-semibold" : "text-muted"}`}>
+          {relative(due)}
+          {manual && <span className="text-muted"> · set by hand</span>}
+        </span>
+      </span>
+    );
+
   return (
-    <span className={past ? "text-red-700" : "text-ink"}>
-      <span className="font-medium">{formatShort(due)}</span>
-      <span className={`block text-xs ${past ? "text-red-600 font-semibold" : "text-muted"}`}>{relative(due)}</span>
-    </span>
+    <EditableDate
+      value={due}
+      label={`Outreach due for ${p.firstName} ${p.lastName}`}
+      onSave={(v) => a.onPatch(p, { nextOutreachOverride: v }, v ? `${p.firstName} ${p.lastName}: outreach due ${formatShort(v)}` : undefined)}
+      onReset={manual ? () => a.onPatch(p, { nextOutreachOverride: "" }, `${p.firstName} ${p.lastName}: outreach date back to the 11-month rule`) : undefined}
+    >
+      {body}
+    </EditableDate>
+  );
+}
+
+function LastPhysical({ p, a }: { p: Patient; a: RowActions }) {
+  return (
+    <EditableDate
+      value={p.lastPhysical}
+      label={`Last physical for ${p.firstName} ${p.lastName}`}
+      onSave={(v) => a.onPatch(p, { lastPhysical: v }, v ? `${p.firstName} ${p.lastName}: last physical ${formatShort(v)}` : `${p.firstName} ${p.lastName}: last physical cleared`)}
+    >
+      <span className="text-ink">{formatShort(p.lastPhysical)}</span>
+    </EditableDate>
   );
 }
 
 function StatusSelect({ p, a, className = "" }: { p: Patient; a: RowActions; className?: string }) {
   return (
     <select
-      className={`field py-1.5 ${className}`}
+      className={`field py-1.5 px-2 ${className}`}
       value={p.outreachStatus === "Completed" ? "" : p.outreachStatus}
       onChange={(e) => {
         const v = e.target.value as OutreachStatus;
@@ -63,12 +95,12 @@ function StatusSelect({ p, a, className = "" }: { p: Patient; a: RowActions; cla
 function ScheduleInput({ p, a, className = "" }: { p: Patient; a: RowActions; className?: string }) {
   const has = Boolean(p.nextPhysical);
   return (
-    <label className={`inline-flex items-center gap-2 rounded-full border bg-white pl-3 pr-1.5 py-1 text-xs font-semibold ${has ? "border-sky-300 text-sky-800" : "border-navy/15 text-navy"} ${className}`}>
+    <label className={`inline-flex items-center gap-2 rounded-full border bg-white pl-2.5 pr-1 py-1 text-xs font-semibold ${has ? "border-sky-300 text-sky-800" : "border-navy/15 text-navy"} ${className}`}>
       <CalendarPlus className="h-4 w-4 text-azure" aria-hidden="true" />
       {has ? "Visit" : "Schedule"}
       <input
         type="date"
-        className="rounded-md border-0 bg-transparent px-1 py-0.5 text-sm font-medium text-ink focus:ring-0"
+        className="w-[7.5rem] rounded-md border-0 bg-transparent px-0.5 py-0.5 text-sm font-medium text-ink focus:ring-0"
         value={toInputDate(p.nextPhysical)}
         onChange={(e) => {
           const v = fromInputDate(e.target.value);
@@ -97,7 +129,7 @@ function Actions({ p, a, stage, busy }: { p: Patient; a: RowActions; stage: Stag
     case "in_progress":
       return (
         <div className="flex flex-wrap items-center gap-2">
-          <StatusSelect p={p} a={a} className="w-44" />
+          <StatusSelect p={p} a={a} className="w-40" />
           <ScheduleInput p={p} a={a} />
         </div>
       );
@@ -175,11 +207,11 @@ export function PatientList({ patients, actions, busyId }: { patients: Patient[]
         <table className="w-full text-sm">
           <thead className="bg-sand/60 text-xs uppercase tracking-wide text-muted">
             <tr>
-              <th className="text-left font-semibold px-4 py-3 whitespace-nowrap">Patient</th>
-              <th className="text-left font-semibold px-4 py-3">Status</th>
-              <th className="text-left font-semibold px-4 py-3 whitespace-nowrap">Last physical</th>
-              <th className="text-left font-semibold px-4 py-3 whitespace-nowrap">Outreach due</th>
-              <th className="text-left font-semibold px-4 py-3 w-[22rem]">Action</th>
+              <th className="text-left font-semibold px-3 py-3 whitespace-nowrap">Patient</th>
+              <th className="text-left font-semibold px-3 py-3">Status</th>
+              <th className="text-left font-semibold px-3 py-3 whitespace-nowrap">Last physical</th>
+              <th className="text-left font-semibold px-3 py-3 whitespace-nowrap">Outreach due</th>
+              <th className="text-left font-semibold px-3 py-3">Action</th>
               <th className="w-10"><span className="sr-only">Remove</span></th>
             </tr>
           </thead>
@@ -188,20 +220,22 @@ export function PatientList({ patients, actions, busyId }: { patients: Patient[]
               const stage = stageOf(p);
               return (
                 <tr key={p.id} className="hover:bg-cream/50 align-middle">
-                  <td className="px-4 py-3 w-px">
+                  <td className="px-3 py-3 w-px">
                     <NameCell p={p} a={actions} />
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-3">
                     <Pill stage={stage}>
                       {STAGE_LABEL[stage]}
                       {stageDetail(p, stage) && <span className="font-normal opacity-80">· {stageDetail(p, stage)}</span>}
                     </Pill>
                   </td>
-                  <td className="px-4 py-3 text-ink whitespace-nowrap">{formatShort(p.lastPhysical)}</td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <OutreachDue p={p} />
+                  <td className="px-3 py-3 whitespace-nowrap">
+                    <LastPhysical p={p} a={actions} />
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-3 whitespace-nowrap">
+                    <OutreachDue p={p} a={actions} />
+                  </td>
+                  <td className="px-3 py-3">
                     <Actions p={p} a={actions} stage={stage} busy={busyId === p.id} />
                   </td>
                   <td className="pr-3 text-right">
@@ -230,12 +264,14 @@ export function PatientList({ patients, actions, busyId }: { patients: Patient[]
               <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
                 <div>
                   <dt className="text-muted">Last physical</dt>
-                  <dd className="font-medium">{formatShort(p.lastPhysical)}</dd>
+                  <dd className="font-medium">
+                    <LastPhysical p={p} a={actions} />
+                  </dd>
                 </div>
                 <div>
                   <dt className="text-muted">Outreach due</dt>
                   <dd>
-                    <OutreachDue p={p} />
+                    <OutreachDue p={p} a={actions} />
                   </dd>
                 </div>
               </dl>

@@ -16,6 +16,7 @@ function mk(p: Partial<Patient> & Pick<Patient, "firstName" | "lastName">): Pati
     id: newId(),
     dob: "",
     lastPhysical: "",
+    nextOutreachOverride: "",
     nextPhysical: "",
     outreachStatus: "",
     notes: "",

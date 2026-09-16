@@ -1,13 +1,22 @@
 import { nextOutreachFor, parseDate, today, toSheetDate } from "./dates";
 import { BOOKED, CONTACT_STATUSES, Patient, SortMode, Stage, STAGE_ORDER } from "./types";
 
+/** The outreach date actually in force: a manual edit if there is one, else the rule. */
+export function outreachDueFor(p: Patient): string {
+  return p.nextOutreachOverride || nextOutreachFor(p.lastPhysical);
+}
+
+export function isOutreachManual(p: Patient): boolean {
+  return Boolean(p.nextOutreachOverride);
+}
+
 export function stageOf(p: Patient): Stage {
   if (p.outreachStatus === "Not Needed") return "not_needed";
   if (p.outreachStatus === "Completed") return "completed";
   if (p.nextPhysical || p.outreachStatus === BOOKED) return "scheduled";
   if ((CONTACT_STATUSES as readonly string[]).includes(p.outreachStatus)) return "in_progress";
-  const due = parseDate(nextOutreachFor(p.lastPhysical));
-  if (!due) return "due"; // no physical on record -> reach out now
+  const due = parseDate(outreachDueFor(p));
+  if (!due) return "due"; // nothing on record -> reach out now
   return due <= today() ? "due" : "upcoming";
 }
 
@@ -17,7 +26,7 @@ function sortKey(p: Patient, stage: Stage): number {
     case "due":
     case "in_progress":
     case "upcoming": {
-      const d = parseDate(nextOutreachFor(p.lastPhysical));
+      const d = parseDate(outreachDueFor(p));
       return d ? d.getTime() : -far; // never-seen patients float to top
     }
     case "scheduled":

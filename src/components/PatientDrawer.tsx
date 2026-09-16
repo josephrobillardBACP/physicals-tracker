@@ -1,7 +1,7 @@
 import { Trash2 } from "lucide-react";
 import { useState } from "react";
-import { ageFrom, formatShort, fromInputDate, nextOutreachFor, toInputDate } from "../lib/dates";
-import { stageOf } from "../lib/logic";
+import { ageFrom, formatShort, fromInputDate, toInputDate } from "../lib/dates";
+import { outreachDueFor, stageOf } from "../lib/logic";
 import { BOOKED, CONTACT_STATUSES, OutreachStatus, Patient, PatientInput, STAGE_LABEL } from "../lib/types";
 import { Modal, Pill, Spinner } from "./ui";
 
@@ -20,6 +20,7 @@ export function PatientDrawer({
   const [last, setLast] = useState(patient.lastName);
   const [dob, setDob] = useState(toInputDate(patient.dob));
   const [lastPhysical, setLastPhysical] = useState(toInputDate(patient.lastPhysical));
+  const [outreachOverride, setOutreachOverride] = useState(toInputDate(patient.nextOutreachOverride));
   const [nextPhysical, setNextPhysical] = useState(toInputDate(patient.nextPhysical));
   const [status, setStatus] = useState<OutreachStatus>(patient.outreachStatus);
   const [notes, setNotes] = useState(patient.notes);
@@ -33,6 +34,7 @@ export function PatientDrawer({
     lastName: last,
     dob: fromInputDate(dob),
     lastPhysical: fromInputDate(lastPhysical),
+    nextOutreachOverride: fromInputDate(outreachOverride),
     nextPhysical: fromInputDate(nextPhysical),
     outreachStatus: status,
     notes,
@@ -100,9 +102,9 @@ export function PatientDrawer({
     >
       <div className="flex flex-wrap items-center gap-2 mb-4 text-sm text-muted">
         <Pill stage={stage}>{STAGE_LABEL[stage]}</Pill>
-        {draft.lastPhysical && (
+        {outreachDueFor(draft) && (
           <span>
-            Next outreach <span className="font-semibold text-ink">{formatShort(nextOutreachFor(draft.lastPhysical))}</span>
+            Next outreach <span className="font-semibold text-ink">{formatShort(outreachDueFor(draft))}</span>
           </span>
         )}
         {age !== null && <span>· Age {age}</span>}
@@ -129,6 +131,13 @@ export function PatientDrawer({
           <label className="label" htmlFor="pd-lp">Last physical</label>
           <input id="pd-lp" className="field" type="date" value={lastPhysical} onChange={(e) => setLastPhysical(e.target.value)} />
           <p className="mt-1 text-xs text-muted">Outreach is due at the end of the month, 11 months later.</p>
+        </div>
+        <div>
+          <label className="label" htmlFor="pd-od">Outreach due</label>
+          <input id="pd-od" className="field" type="date" value={outreachOverride} onChange={(e) => setOutreachOverride(e.target.value)} placeholder="Calculated" />
+          <p className="mt-1 text-xs text-muted">
+            {outreachOverride ? "Set by hand. Clear the box to go back to the calculated date." : "Calculated from the last physical. Type a date to override it."}
+          </p>
         </div>
         <div>
           <label className="label" htmlFor="pd-np">Next physical (scheduled)</label>

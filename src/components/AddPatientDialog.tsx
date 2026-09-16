@@ -33,6 +33,7 @@ export function AddPatientDialog({
         lastName: titleCase(last.trim()),
         dob: fromInputDate(dob),
             lastPhysical: fromInputDate(lastPhysical),
+        nextOutreachOverride: "",
         nextPhysical: "",
         outreachStatus: "",
         notes: notes.trim(),

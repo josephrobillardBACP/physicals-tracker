@@ -20,6 +20,8 @@ export interface Patient {
   lastName: string;
   dob: string; // M/D/YYYY or ""
   lastPhysical: string; // M/D/YYYY or ""
+  /** Set only when staff typed an outreach date by hand; "" means use the 11-month rule. */
+  nextOutreachOverride: string;
   nextPhysical: string; // M/D/YYYY or "" (the scheduled appointment)
   outreachStatus: OutreachStatus;
   notes: string;

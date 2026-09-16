@@ -25,6 +25,8 @@ Each patient has a last physical date. Outreach is due at the end of the month e
 
 Filter chips across the top show live counts. Search matches name, date of birth, or notes. Clicking a name opens the full record. Every row has a small **x** to take a patient off the list, with a confirmation and an undo.
 
+**Correcting a date:** double-click the last physical or the outreach due date in the table, or click the pencil that appears on hover. Enter saves, Escape cancels. An outreach date typed by hand is marked "set by hand" and overrides the 11-month rule until you click the reset arrow to go back to the calculated date.
+
 ## Who can get in
 
 Two layers, both already in place for the travel medicine app:
@@ -35,6 +37,8 @@ Two layers, both already in place for the travel medicine app:
 Removing someone from Google Workspace removes their access to both.
 
 ## One-time setup
+
+**See [SETUP.md](SETUP.md) for the click-by-click version.** Summary:
 
 ### 1. Firebase
 
