@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ALLOWED_DOMAIN, CLIENT_ID } from "../lib/auth";
-import { Logo, Spinner } from "./ui";
+import { Spinner } from "./ui";
 
 export function SignIn({ onSignIn, onDemo, notice }: { onSignIn: () => Promise<void>; onDemo?: () => void; notice?: string | null }) {
   const [busy, setBusy] = useState(false);
@@ -21,8 +21,7 @@ export function SignIn({ onSignIn, onDemo, notice }: { onSignIn: () => Promise<v
   return (
     <main className="min-h-screen flex items-center justify-center p-6">
       <div className="card w-full max-w-md p-8 text-center">
-        <Logo className="h-14 w-14 mx-auto" />
-        <h1 className="mt-5 font-serif text-4xl font-semibold text-navy">Annual Physicals Tracker</h1>
+        <h1 className="font-serif text-4xl font-semibold text-navy">Annual Physicals Tracker</h1>
         <p className="mt-3 text-sm text-muted">
           Track who is due for an annual physical, log outreach, and schedule visits.
           {ALLOWED_DOMAIN && (

@@ -1,13 +1,14 @@
-import { CalendarPlus, Check, ChevronRight, Undo2 } from "lucide-react";
+import { CalendarPlus, Check, ChevronRight, Undo2, X } from "lucide-react";
 import { ageFrom, formatShort, fromInputDate, nextOutreachFor, parseDate, relative, today, toInputDate } from "../lib/dates";
-import { stageOf } from "../lib/logic";
-import { CONTACT_STATUSES, OutreachStatus, Patient, PatientInput, Stage, STAGE_LABEL } from "../lib/types";
+import { bookedWithoutDate, stageOf } from "../lib/logic";
+import { BOOKED, CONTACT_STATUSES, OutreachStatus, Patient, PatientInput, Stage, STAGE_LABEL } from "../lib/types";
 import { Pill, Spinner } from "./ui";
 
 export interface RowActions {
   onOpen: (p: Patient) => void;
   onPatch: (p: Patient, patch: Partial<PatientInput>, msg?: string) => void;
   onConfirmComplete: (p: Patient) => void;
+  onRemove: (p: Patient) => void;
 }
 
 function stageDetail(p: Patient, stage: Stage): string {
@@ -15,7 +16,7 @@ function stageDetail(p: Patient, stage: Stage): string {
     case "in_progress":
       return p.outreachStatus;
     case "scheduled":
-      return formatShort(p.nextPhysical);
+      return bookedWithoutDate(p) ? "date to be set" : formatShort(p.nextPhysical);
     case "completed":
       return "confirm to clear";
     default:
@@ -54,6 +55,7 @@ function StatusSelect({ p, a, className = "" }: { p: Patient; a: RowActions; cla
           {s}
         </option>
       ))}
+      <option value={BOOKED}>{BOOKED}</option>
     </select>
   );
 }
@@ -70,7 +72,11 @@ function ScheduleInput({ p, a, className = "" }: { p: Patient; a: RowActions; cl
         value={toInputDate(p.nextPhysical)}
         onChange={(e) => {
           const v = fromInputDate(e.target.value);
-          a.onPatch(p, { nextPhysical: v }, v ? `${p.firstName} ${p.lastName} scheduled for ${formatShort(v)}` : `${p.firstName} ${p.lastName}: appointment cleared`);
+          a.onPatch(
+            p,
+            v ? { nextPhysical: v, outreachStatus: BOOKED } : { nextPhysical: "", outreachStatus: "" },
+            v ? `${p.firstName} ${p.lastName} booked for ${formatShort(v)}` : `${p.firstName} ${p.lastName}: appointment cleared`,
+          );
         }}
         aria-label={`Scheduled physical date for ${p.firstName} ${p.lastName}`}
       />
@@ -126,6 +132,19 @@ function Actions({ p, a, stage, busy }: { p: Patient; a: RowActions; stage: Stag
   }
 }
 
+function RemoveButton({ p, a }: { p: Patient; a: RowActions }) {
+  return (
+    <button
+      className="rounded-full p-1.5 text-muted/70 hover:bg-red-50 hover:text-red-700 transition-colors"
+      onClick={() => a.onRemove(p)}
+      title={`Remove ${p.firstName} ${p.lastName}`}
+      aria-label={`Remove ${p.firstName} ${p.lastName}`}
+    >
+      <X className="h-4 w-4" />
+    </button>
+  );
+}
+
 function NameCell({ p, a }: { p: Patient; a: RowActions }) {
   const age = ageFrom(p.dob);
   return (
@@ -162,6 +181,7 @@ export function PatientList({ patients, actions, busyId }: { patients: Patient[]
               <th className="text-left font-semibold px-4 py-3">Last physical</th>
               <th className="text-left font-semibold px-4 py-3">Outreach due</th>
               <th className="text-left font-semibold px-4 py-3 w-[22rem]">Action</th>
+              <th className="w-10"><span className="sr-only">Remove</span></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-navy/5">
@@ -185,6 +205,9 @@ export function PatientList({ patients, actions, busyId }: { patients: Patient[]
                   <td className="px-4 py-3">
                     <Actions p={p} a={actions} stage={stage} busy={busyId === p.id} />
                   </td>
+                  <td className="pr-3 text-right">
+                    <RemoveButton p={p} a={actions} />
+                  </td>
                 </tr>
               );
             })}
@@ -200,7 +223,10 @@ export function PatientList({ patients, actions, busyId }: { patients: Patient[]
             <div key={p.id} className="card p-4">
               <div className="flex items-start justify-between gap-3">
                 <NameCell p={p} a={actions} />
-                <Pill stage={stage}>{STAGE_LABEL[stage]}</Pill>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Pill stage={stage}>{STAGE_LABEL[stage]}</Pill>
+                  <RemoveButton p={p} a={actions} />
+                </div>
               </div>
               <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
                 <div>

@@ -8,8 +8,13 @@ export const CONTACT_STATUSES = [
 export type ContactStatus = (typeof CONTACT_STATUSES)[number];
 
 /** What is stored in the Outreach Status column. */
-/** "Not Needed" = no annual physical required (e.g. a child on a family membership). */
-export type OutreachStatus = "" | ContactStatus | "Completed" | "Not Needed";
+/**
+ * "Physical Booked" = the visit is on the calendar but has not happened yet.
+ * "Not Needed"      = no annual physical required (e.g. a child on a family membership).
+ */
+export type OutreachStatus = "" | ContactStatus | "Physical Booked" | "Completed" | "Not Needed";
+
+export const BOOKED: OutreachStatus = "Physical Booked";
 
 export interface Patient {
   id: string;
@@ -36,7 +41,7 @@ export const STAGE_ORDER: Stage[] = ["due", "in_progress", "scheduled", "complet
 export const STAGE_LABEL: Record<Stage, string> = {
   due: "Needs outreach",
   in_progress: "In progress",
-  scheduled: "Scheduled",
+  scheduled: "Physical booked",
   completed: "Completed",
   upcoming: "Up to date",
   not_needed: "No physical needed",

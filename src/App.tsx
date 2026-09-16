@@ -1,10 +1,10 @@
-import { LogOut, Plus, RefreshCw, Search } from "lucide-react";
+import { ChevronDown, LogOut, Plus, RefreshCw, Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AddPatientDialog } from "./components/AddPatientDialog";
 import { PatientDrawer } from "./components/PatientDrawer";
 import { PatientList } from "./components/PatientList";
 import { SignIn } from "./components/SignIn";
-import { Logo, Pill, Spinner, STAGE_STYLE, ToastProvider, useToast } from "./components/ui";
+import { Modal, Pill, Spinner, STAGE_STYLE, ToastProvider, useToast } from "./components/ui";
 import { loadSession, saveSession, Session, signIn, signOut } from "./lib/auth";
 import { DemoSource } from "./lib/demo";
 import { matches, rollForward, sortPatients, stageOf } from "./lib/logic";
@@ -13,7 +13,8 @@ import { DataSource, Panel } from "./lib/store";
 import { Patient, PatientInput, Stage, STAGE_LABEL, STAGE_ORDER, User } from "./lib/types";
 
 const SHEET_ID = (import.meta.env.VITE_SHEET_ID as string | undefined) ?? "";
-const DEMO_ALLOWED = import.meta.env.DEV || new URLSearchParams(location.search).has("demo");
+const DEMO_ONLY = (import.meta.env.VITE_DEMO_ONLY as string | undefined) === "1";
+const DEMO_ALLOWED = DEMO_ONLY || import.meta.env.DEV || new URLSearchParams(location.search).has("demo");
 const REFRESH_MS = 90_000;
 
 export default function App() {
@@ -26,7 +27,7 @@ export default function App() {
 
 function Root() {
   const [session, setSession] = useState<Session | null>(() => loadSession());
-  const [demo, setDemo] = useState(false);
+  const [demo, setDemo] = useState(DEMO_ONLY);
   const [notice, setNotice] = useState<string | null>(null);
   const sessionRef = useRef(session);
   sessionRef.current = session;
@@ -96,6 +97,7 @@ function Tracker({ source, user, demo, onSignOut }: { source: DataSource; user: 
   const [openId, setOpenId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
+  const [removing, setRemoving] = useState<Patient | null>(null);
 
   // ---- Load panels once, then patients per panel -------------------------
   useEffect(() => {
@@ -216,7 +218,36 @@ function Tracker({ source, user, demo, onSignOut }: { source: DataSource; user: 
     if (!panel) return;
     await source.deletePatient(panel, p.id);
     setPatients((list) => list.filter((x) => x.id !== p.id));
-    toast({ kind: "ok", text: `Removed ${p.firstName} ${p.lastName}.` });
+    const { id: _id, updatedAt: _u, updatedBy: _b, ...snapshot } = p;
+    toast({
+      kind: "ok",
+      text: `Removed ${p.firstName} ${p.lastName}.`,
+      action: {
+        label: "Undo",
+        run: async () => {
+          try {
+            const restored = await source.addPatient(panel, snapshot, user);
+            setPatients((list) => [...list, restored]);
+          } catch (e) {
+            toast({ kind: "error", text: (e as Error).message });
+          }
+        },
+      },
+    });
+  };
+
+  const confirmRemove = async () => {
+    const p = removing;
+    if (!p) return;
+    setRemoving(null);
+    setBusyId(p.id);
+    try {
+      await remove(p);
+    } catch (e) {
+      toast({ kind: "error", text: (e as Error).message });
+    } finally {
+      setBusyId(null);
+    }
   };
 
   // ---- Derived -----------------------------------------------------------
@@ -238,26 +269,27 @@ function Tracker({ source, user, demo, onSignOut }: { source: DataSource; user: 
     <div className="min-h-screen">
       <header className="sticky top-0 z-30 bg-cream/90 backdrop-blur border-b border-navy/10">
         <div className="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-3 mr-2">
-            <Logo />
-            <h1 className="font-serif text-2xl font-semibold text-navy leading-tight">Annual Physicals Tracker</h1>
-          </div>
+          <h1 className="font-serif text-2xl font-semibold text-navy leading-tight mr-2">Annual Physicals Tracker</h1>
 
           {panels.length > 0 && (
-            <nav className="flex rounded-full bg-sand p-1 order-last w-full sm:order-none sm:w-auto" aria-label="Doctor">
-              {panels.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => setPanel(p)}
-                  className={`flex-1 sm:flex-none rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${
-                    panel?.id === p.id ? "bg-navy text-white shadow-sm" : "text-navy hover:bg-white/60"
-                  }`}
-                  aria-current={panel?.id === p.id ? "page" : undefined}
+            <div className="flex items-center gap-2 order-last w-full sm:order-none sm:w-auto">
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted">Doctor</span>
+              <label className="relative flex-1 sm:flex-none">
+                <select
+                  className="w-full appearance-none rounded-full border border-navy/15 bg-white pl-4 pr-9 py-2 text-sm font-semibold text-navy shadow-sm hover:border-navy/40 cursor-pointer"
+                  value={panel?.id ?? ""}
+                  onChange={(e) => setPanel(panels.find((p) => p.id === e.target.value) ?? null)}
+                  aria-label="Doctor"
                 >
-                  {p.title}
-                </button>
-              ))}
-            </nav>
+                  {panels.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.title}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted pointer-events-none" aria-hidden="true" />
+              </label>
+            </div>
           )}
 
           <div className="ml-auto flex items-center gap-2">
@@ -329,7 +361,7 @@ function Tracker({ source, user, demo, onSignOut }: { source: DataSource; user: 
               )}
             </div>
           ) : (
-            <PatientList patients={visible} busyId={busyId} actions={{ onOpen: (p) => setOpenId(p.id), onPatch: patch, onConfirmComplete: confirmComplete }} />
+            <PatientList patients={visible} busyId={busyId} actions={{ onOpen: (p) => setOpenId(p.id), onPatch: patch, onConfirmComplete: confirmComplete, onRemove: setRemoving }} />
           )}
         </div>
 
@@ -338,6 +370,30 @@ function Tracker({ source, user, demo, onSignOut }: { source: DataSource; user: 
           Outreach is due at the end of the month, 11 months after the last physical.
         </p>
       </main>
+
+      {removing && (
+        <Modal
+          title="Remove patient?"
+          onClose={() => setRemoving(null)}
+          footer={
+            <>
+              <button className="btn-secondary" onClick={() => setRemoving(null)}>
+                Cancel
+              </button>
+              <button className="btn-danger" onClick={confirmRemove}>
+                Remove
+              </button>
+            </>
+          }
+        >
+          <p className="text-sm text-ink">
+            <span className="font-semibold">
+              {removing.firstName} {removing.lastName}
+            </span>{" "}
+            will be taken off {panel?.title}&rsquo;s list. You can undo this straight afterwards.
+          </p>
+        </Modal>
+      )}
 
       {adding && panel && <AddPatientDialog doctor={panel.title} onClose={() => setAdding(false)} onSave={add} />}
       {open && (

@@ -1,10 +1,10 @@
 import { nextOutreachFor, parseDate, today, toSheetDate } from "./dates";
-import { CONTACT_STATUSES, Patient, Stage, STAGE_ORDER } from "./types";
+import { BOOKED, CONTACT_STATUSES, Patient, Stage, STAGE_ORDER } from "./types";
 
 export function stageOf(p: Patient): Stage {
   if (p.outreachStatus === "Not Needed") return "not_needed";
   if (p.outreachStatus === "Completed") return "completed";
-  if (p.nextPhysical) return "scheduled";
+  if (p.nextPhysical || p.outreachStatus === BOOKED) return "scheduled";
   if ((CONTACT_STATUSES as readonly string[]).includes(p.outreachStatus)) return "in_progress";
   const due = parseDate(nextOutreachFor(p.lastPhysical));
   if (!due) return "due"; // no physical on record -> reach out now
@@ -40,6 +40,11 @@ export function sortPatients(list: Patient[]): Patient[] {
       return `${a.p.lastName} ${a.p.firstName}`.localeCompare(`${b.p.lastName} ${b.p.firstName}`);
     })
     .map((x) => x.p);
+}
+
+/** True once the visit is booked but the date has not been filled in yet. */
+export function bookedWithoutDate(p: Patient): boolean {
+  return p.outreachStatus === BOOKED && !p.nextPhysical;
 }
 
 /** Roll a confirmed-complete patient forward to next year. */

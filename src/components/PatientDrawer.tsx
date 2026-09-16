@@ -2,7 +2,7 @@ import { Trash2 } from "lucide-react";
 import { useState } from "react";
 import { ageFrom, formatShort, fromInputDate, nextOutreachFor, toInputDate } from "../lib/dates";
 import { stageOf } from "../lib/logic";
-import { CONTACT_STATUSES, Membership, OutreachStatus, Patient, PatientInput, STAGE_LABEL } from "../lib/types";
+import { BOOKED, CONTACT_STATUSES, Membership, OutreachStatus, Patient, PatientInput, STAGE_LABEL } from "../lib/types";
 import { Modal, Pill, Spinner } from "./ui";
 
 export function PatientDrawer({
@@ -152,6 +152,7 @@ export function PatientDrawer({
                 {s}
               </option>
             ))}
+            <option value={BOOKED}>{BOOKED} (visit on the calendar)</option>
             <option value="Completed">Completed (awaiting confirmation)</option>
             <option value="Not Needed">No physical needed (e.g. child)</option>
           </select>

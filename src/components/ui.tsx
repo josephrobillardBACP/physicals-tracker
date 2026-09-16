@@ -125,12 +125,3 @@ export function Spinner({ className = "h-5 w-5" }: { className?: string }) {
     </svg>
   );
 }
-
-export function Logo({ className = "h-9 w-9" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 64 64" className={className} aria-hidden="true">
-      <rect width="64" height="64" rx="14" fill="#063862" />
-      <path d="M32 14v36M20 26h24M20 38h24" stroke="#F6F1E9" strokeWidth="6" strokeLinecap="round" />
-    </svg>
-  );
-}

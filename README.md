@@ -13,7 +13,7 @@ A small web app the front office uses to see which patients are due for an annua
 | Last Physical | Date of the most recent physical. |
 | Next Outreach | Computed: the last day of the month 11 months after the last physical (8/1/2025 → 7/31/2026). |
 | Next Physical | The scheduled appointment, if any. |
-| Outreach Status | Blank, `Sent Message`, `Left Voicemail`, `Patient Calling Back`, `Completed`, or `Not Needed`. |
+| Outreach Status | Blank, `Sent Message`, `Left Voicemail`, `Patient Calling Back`, `Physical Booked`, `Completed`, or `Not Needed`. |
 
 The app derives a status for every patient:
 
@@ -21,12 +21,12 @@ The app derives a status for every patient:
 | --- | --- | --- |
 | **Needs outreach** (red) | Outreach date has passed, or there is no physical on record. | Pick a contact status, or schedule the visit. |
 | **In progress** (amber) | A contact status is set. | Keep updating it, or schedule the visit. |
-| **Scheduled** (blue) | Next Physical has a date. | Click **Physical done** after the visit. |
+| **Physical booked** (blue) | Status is `Physical Booked`, or Next Physical has a date. | Fill in the date if it is still missing, then click **Physical done** after the visit. |
 | **Completed** (green) | Marked done, waiting for confirmation. | Click **Confirm & clear**. The last physical becomes the visit date, the appointment and status are cleared, and the patient drops to the bottom of the list until next year. Undo is offered in the toast. |
 | **Up to date** (gray) | Outreach date is still in the future. | Nothing. |
 | **No physical needed** | Status is `Not Needed` (e.g. children on a family plan). | Nothing. "Start tracking" brings them back. |
 
-The list sorts action-needed patients to the top. Filter chips at the top show counts; search matches name, date of birth, or notes. Clicking a name opens the full record (edit any field, add notes, remove the patient). The list refreshes itself every 90 seconds and whenever the tab regains focus, so several staff can work at once.
+Every row has a small **x** to take a patient off the list; it asks for confirmation and the toast offers an undo. The list sorts action-needed patients to the top. Filter chips at the top show counts; search matches name, date of birth, or notes. Clicking a name opens the full record (edit any field, add notes, remove the patient). The list refreshes itself every 90 seconds and whenever the tab regains focus, so several staff can work at once.
 
 ## Who can get in
 
@@ -80,6 +80,10 @@ npm run dev
 Open <http://localhost:5180>. Without a client ID configured, the sign-in page offers **Preview with sample data**, which runs the whole UI against fictional in-memory patients (also available in production by adding `?demo` to the URL).
 
 > Google Drive gotcha: `npm install` fails inside a Drive-synced folder. Copy the project to a local folder (or pause Drive sync) before installing.
+
+## Shareable preview
+
+`npm run build:preview` produces `dist-demo/` — the whole app running on fictional sample patients, with sign-in skipped. Use it to show the workflow to someone without giving them access to real patient data.
 
 ## Adding a doctor later
 
