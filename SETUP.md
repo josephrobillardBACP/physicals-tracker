@@ -214,7 +214,7 @@ Say yes.
 
 ### 5.4 Choose who gets the email
 
-In the app, pick a practice and click the **bell** beside the Practice dropdown.
+In the app, pick a practice and click **Email settings** at the top right.
 Add the front office addresses for that practice and save. Do the same for the
 other practice. Each list only ever hears about its own patients.
 

@@ -40,7 +40,9 @@ function LastPhysical({ p, a }: { p: Patient; a: RowActions }) {
         )
       }
     >
-      <span className="text-ink">{formatShort(p.lastPhysical)}</span>
+      <span className={p.outreachStatus === "Not Needed" && !p.lastPhysical ? "text-muted" : "text-ink"}>
+        {p.outreachStatus === "Not Needed" && !p.lastPhysical ? "NA" : formatShort(p.lastPhysical)}
+      </span>
     </EditableDate>
   );
 }
@@ -51,11 +53,11 @@ function OutreachDue({ p, a }: { p: Patient; a: RowActions }) {
   const d = parseDate(due);
   const past = d ? d <= today() : false;
 
-  const body =
-    p.outreachStatus === "Not Needed" ? (
-      <span className="text-muted">—</span>
-    ) : !d ? (
-      <span className="text-red-700 font-semibold">No physical on record</span>
+  // A patient who does not need a physical still reads "No physical on record",
+  // just quietly: there is nothing wrong, so it is not flagged red.
+  const quiet = p.outreachStatus === "Not Needed";
+  const body = !d ? (
+      <span className={quiet ? "text-muted" : "text-red-700 font-semibold"}>No physical on record</span>
     ) : (
       <span className={past ? "text-red-700" : "text-ink"}>
         <span className="font-medium">{formatShort(due)}</span>
@@ -91,7 +93,13 @@ function StatusSelect({ p, a, className = "" }: { p: Patient; a: RowActions; cla
       value={p.outreachStatus === "Completed" ? "" : p.outreachStatus}
       onChange={(e) => {
         const v = e.target.value as OutreachStatus;
-        a.onPatch(p, { outreachStatus: v }, v ? `${p.firstName} ${p.lastName}: ${v}` : undefined);
+        // Marking someone as not needing a physical clears the dates with it,
+        // so nothing is left behind to pull them back into the outreach list.
+        const patch =
+          v === "Not Needed"
+            ? { outreachStatus: v, lastPhysical: "", nextPhysical: "", nextOutreachOverride: "" }
+            : { outreachStatus: v };
+        a.onPatch(p, patch, v ? `${p.firstName} ${p.lastName}: ${v}` : undefined);
       }}
       aria-label={`Outreach status for ${p.firstName} ${p.lastName}`}
     >
@@ -102,6 +110,7 @@ function StatusSelect({ p, a, className = "" }: { p: Patient; a: RowActions; cla
         </option>
       ))}
       <option value={BOOKED}>{BOOKED}</option>
+      <option value="Not Needed">Not Needed</option>
     </select>
   );
 }
@@ -170,7 +179,7 @@ function ActionCell({ p, a, stage, busy }: { p: Patient; a: RowActions; stage: S
         </div>
       );
     case "upcoming":
-      return <span className="text-sm text-muted">—</span>;
+      return <StatusSelect p={p} a={a} className="w-40" />;
     case "not_needed":
       return (
         <button

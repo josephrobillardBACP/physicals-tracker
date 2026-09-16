@@ -17,9 +17,11 @@ Each patient has a last physical date. Outreach is due at the end of the month e
 | **Physical booked** (blue) | The status is `Physical Booked`, or a visit date is set. | Fill in the date if it is still missing, then click **Physical done** after the visit. |
 | **Completed** (green) | Marked done, waiting for confirmation. | Click **Confirm & clear**. The visit date becomes the last physical, the status clears, and the patient drops down the list until next year. The toast offers an undo. |
 | **Up to date** (grey) | The outreach date is still in the future. | Nothing. |
-| **No physical needed** | The status is `Not Needed`, for children on a family plan. | Nothing. "Start tracking" brings them back. |
+| **No physical needed** | The status is `Not Needed`, for children on a family plan or anyone who does not need one. | Nothing. "Start tracking" brings them back. |
 
 **The list holds still while you work.** Setting a status or typing a date never moves a row. The order is recalculated only when you click **Refresh**, change the sort or filter, add a patient, or click **Confirm & clear**. If someone else adds a patient while you are working, a small banner offers to bring them in.
+
+**Marking someone Not Needed** from the status dropdown clears their last physical and any booked visit in one step, so nothing pulls them back into the outreach list. Their last physical then reads `NA` and their outreach due reads "No physical on record" in grey rather than red, because nothing is wrong.
 
 **Sorting:** needs attention first (the default), last name A to Z, most recent physical, or oldest physical.
 
@@ -35,7 +37,7 @@ patient already in the pile does not trigger another email; the run stores which
 patients it has reported and only reports the difference. The message carries a
 count and a link, never patient names, so no patient data leaves the database.
 
-Manage the recipients with the bell beside the Practice dropdown. An empty list
+Manage the recipients with **Email settings** at the top right. An empty list
 means no email for that practice. See `functions/` and Part 5 of SETUP.md.
 
 ## Who can get in

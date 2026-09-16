@@ -1,4 +1,4 @@
-import { Bell, ChevronDown, LogOut, Plus, RefreshCw, Search, Upload } from "lucide-react";
+import { ChevronDown, LogOut, Mail, Plus, RefreshCw, Search, Upload } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AddPatientDialog } from "./components/AddPatientDialog";
 import { NotificationsDialog } from "./components/NotificationsDialog";
@@ -353,23 +353,23 @@ function Tracker({ source, user, demo, onSignOut }: { source: DataSource; user: 
                 </select>
                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted pointer-events-none" aria-hidden="true" />
               </label>
-              {source.setNotifyEmails && panel && (
-                <button
-                  className="btn-ghost px-2"
-                  onClick={() => setEditingNotify(true)}
-                  title={`Daily email for ${panel.title}`}
-                  aria-label={`Daily email for ${panel.title}`}
-                >
-                  <Bell className="h-4 w-4" />
-                  {panel.notifyEmails.length > 0 && (
-                    <span className="rounded-full bg-azure/15 px-1.5 text-xs font-semibold text-navy">{panel.notifyEmails.length}</span>
-                  )}
-                </button>
-              )}
             </div>
           )}
 
           <div className="ml-auto flex items-center gap-2">
+            {source.setNotifyEmails && panel && (
+              <button
+                className="btn-secondary py-1.5"
+                onClick={() => setEditingNotify(true)}
+                title={`Who gets the daily email for ${panel.title}`}
+              >
+                <Mail className="h-4 w-4" />
+                <span className="hidden sm:inline">Email settings</span>
+                {panel.notifyEmails.length > 0 && (
+                  <span className="rounded-full bg-azure/15 px-1.5 text-xs font-semibold text-navy">{panel.notifyEmails.length}</span>
+                )}
+              </button>
+            )}
             {demo && <span className="rounded-md bg-amber-100 text-amber-900 text-xs font-semibold px-2 py-1">Sample data</span>}
             {user.picture ? (
               <img src={user.picture} alt="" className="h-8 w-8 rounded-full" referrerPolicy="no-referrer" />
