@@ -1,8 +1,8 @@
 import { CalendarPlus, Check, ChevronRight, Undo2, X } from "lucide-react";
 import { ageFrom, formatShort, fromInputDate, parseDate, relative, today, toInputDate } from "../lib/dates";
 import { bookedWithoutDate, isOutreachManual, outreachDueFor, stageOf } from "../lib/logic";
-import { EditableDate } from "./EditableDate";
 import { BOOKED, CONTACT_STATUSES, OutreachStatus, Patient, PatientInput, Stage, STAGE_LABEL } from "../lib/types";
+import { EditableDate } from "./EditableDate";
 import { Pill, Spinner } from "./ui";
 
 export interface RowActions {
@@ -23,6 +23,26 @@ function stageDetail(p: Patient, stage: Stage): string {
     default:
       return "";
   }
+}
+
+// ---- Cells -----------------------------------------------------------------
+
+function LastPhysical({ p, a }: { p: Patient; a: RowActions }) {
+  return (
+    <EditableDate
+      value={p.lastPhysical}
+      label={`Last physical for ${p.firstName} ${p.lastName}`}
+      onSave={(v) =>
+        a.onPatch(
+          p,
+          { lastPhysical: v },
+          v ? `${p.firstName} ${p.lastName}: last physical ${formatShort(v)}` : `${p.firstName} ${p.lastName}: last physical cleared`,
+        )
+      }
+    >
+      <span className="text-ink">{formatShort(p.lastPhysical)}</span>
+    </EditableDate>
+  );
 }
 
 function OutreachDue({ p, a }: { p: Patient; a: RowActions }) {
@@ -50,22 +70,16 @@ function OutreachDue({ p, a }: { p: Patient; a: RowActions }) {
     <EditableDate
       value={due}
       label={`Outreach due for ${p.firstName} ${p.lastName}`}
-      onSave={(v) => a.onPatch(p, { nextOutreachOverride: v }, v ? `${p.firstName} ${p.lastName}: outreach due ${formatShort(v)}` : undefined)}
-      onReset={manual ? () => a.onPatch(p, { nextOutreachOverride: "" }, `${p.firstName} ${p.lastName}: outreach date back to the 11-month rule`) : undefined}
+      onSave={(v) =>
+        a.onPatch(p, { nextOutreachOverride: v }, v ? `${p.firstName} ${p.lastName}: outreach due ${formatShort(v)}` : undefined)
+      }
+      onReset={
+        manual
+          ? () => a.onPatch(p, { nextOutreachOverride: "" }, `${p.firstName} ${p.lastName}: outreach date back to the 11-month rule`)
+          : undefined
+      }
     >
       {body}
-    </EditableDate>
-  );
-}
-
-function LastPhysical({ p, a }: { p: Patient; a: RowActions }) {
-  return (
-    <EditableDate
-      value={p.lastPhysical}
-      label={`Last physical for ${p.firstName} ${p.lastName}`}
-      onSave={(v) => a.onPatch(p, { lastPhysical: v }, v ? `${p.firstName} ${p.lastName}: last physical ${formatShort(v)}` : `${p.firstName} ${p.lastName}: last physical cleared`)}
-    >
-      <span className="text-ink">{formatShort(p.lastPhysical)}</span>
     </EditableDate>
   );
 }
@@ -92,12 +106,17 @@ function StatusSelect({ p, a, className = "" }: { p: Patient; a: RowActions; cla
   );
 }
 
-function ScheduleInput({ p, a, className = "" }: { p: Patient; a: RowActions; className?: string }) {
+/** The "Next physical date" column: the booked appointment. */
+function ScheduleCell({ p, a }: { p: Patient; a: RowActions }) {
+  if (stageOf(p) === "not_needed") return <span className="text-muted">—</span>;
   const has = Boolean(p.nextPhysical);
   return (
-    <label className={`inline-flex items-center gap-2 rounded-full border bg-white pl-2.5 pr-1 py-1 text-xs font-semibold ${has ? "border-sky-300 text-sky-800" : "border-navy/15 text-navy"} ${className}`}>
-      <CalendarPlus className="h-4 w-4 text-azure" aria-hidden="true" />
-      {has ? "Visit" : "Schedule"}
+    <label
+      className={`inline-flex items-center gap-1.5 rounded-full border bg-white pl-2.5 pr-1 py-1 ${
+        has ? "border-sky-300" : "border-navy/15"
+      }`}
+    >
+      <CalendarPlus className={`h-4 w-4 shrink-0 ${has ? "text-sky-600" : "text-azure"}`} aria-hidden="true" />
       <input
         type="date"
         className="w-[7.5rem] rounded-md border-0 bg-transparent px-0.5 py-0.5 text-sm font-medium text-ink focus:ring-0"
@@ -106,17 +125,19 @@ function ScheduleInput({ p, a, className = "" }: { p: Patient; a: RowActions; cl
           const v = fromInputDate(e.target.value);
           a.onPatch(
             p,
+            // Setting a date books the visit, so the stored status stays meaningful.
             v ? { nextPhysical: v, outreachStatus: BOOKED } : { nextPhysical: "", outreachStatus: "" },
             v ? `${p.firstName} ${p.lastName} booked for ${formatShort(v)}` : `${p.firstName} ${p.lastName}: appointment cleared`,
           );
         }}
-        aria-label={`Scheduled physical date for ${p.firstName} ${p.lastName}`}
+        aria-label={`Next physical date for ${p.firstName} ${p.lastName}`}
       />
     </label>
   );
 }
 
-function Actions({ p, a, stage, busy }: { p: Patient; a: RowActions; stage: Stage; busy: boolean }) {
+/** The "Action" column: whatever this patient needs from staff right now. */
+function ActionCell({ p, a, stage, busy }: { p: Patient; a: RowActions; stage: Stage; busy: boolean }) {
   if (busy) {
     return (
       <span className="inline-flex items-center gap-2 text-sm text-muted">
@@ -127,37 +148,35 @@ function Actions({ p, a, stage, busy }: { p: Patient; a: RowActions; stage: Stag
   switch (stage) {
     case "due":
     case "in_progress":
-      return (
-        <div className="flex flex-wrap items-center gap-2">
-          <StatusSelect p={p} a={a} className="w-40" />
-          <ScheduleInput p={p} a={a} />
-        </div>
-      );
+      return <StatusSelect p={p} a={a} className="w-40" />;
     case "scheduled":
       return (
-        <div className="flex flex-wrap items-center gap-2">
-          <ScheduleInput p={p} a={a} />
-          <button className="btn-success py-1.5" onClick={() => a.onPatch(p, { outreachStatus: "Completed" }, `${p.firstName} ${p.lastName} marked complete — confirm to clear`)}>
-            <Check className="h-4 w-4" /> Physical done
-          </button>
-        </div>
+        <button
+          className="btn-success py-1.5"
+          onClick={() => a.onPatch(p, { outreachStatus: "Completed" }, `${p.firstName} ${p.lastName} marked complete — confirm to clear`)}
+        >
+          <Check className="h-4 w-4" /> Physical done
+        </button>
       );
     case "completed":
       return (
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1">
           <button className="btn-success py-1.5" onClick={() => a.onConfirmComplete(p)}>
             <Check className="h-4 w-4" /> Confirm &amp; clear
           </button>
-          <button className="btn-ghost py-1.5 text-muted" onClick={() => a.onPatch(p, { outreachStatus: "" })} title="Not done yet">
-            <Undo2 className="h-4 w-4" /> Not yet
+          <button className="btn-ghost py-1.5 px-2 text-muted" onClick={() => a.onPatch(p, { outreachStatus: "" })} title="Not done yet">
+            <Undo2 className="h-4 w-4" />
           </button>
         </div>
       );
     case "upcoming":
-      return <ScheduleInput p={p} a={a} />;
+      return <span className="text-sm text-muted">—</span>;
     case "not_needed":
       return (
-        <button className="btn-ghost py-1.5 text-muted" onClick={() => a.onPatch(p, { outreachStatus: "" }, `${p.firstName} ${p.lastName} is now tracked for physicals`)}>
+        <button
+          className="btn-ghost py-1.5 text-muted"
+          onClick={() => a.onPatch(p, { outreachStatus: "" }, `${p.firstName} ${p.lastName} is now tracked for physicals`)}
+        >
           Start tracking
         </button>
       );
@@ -199,6 +218,8 @@ function NameCell({ p, a }: { p: Patient; a: RowActions }) {
   );
 }
 
+// ---- List ------------------------------------------------------------------
+
 export function PatientList({ patients, actions, busyId }: { patients: Patient[]; actions: RowActions; busyId: string | null }) {
   return (
     <>
@@ -212,7 +233,10 @@ export function PatientList({ patients, actions, busyId }: { patients: Patient[]
               <th className="text-left font-semibold px-3 py-3 whitespace-nowrap">Last physical</th>
               <th className="text-left font-semibold px-3 py-3 whitespace-nowrap">Outreach due</th>
               <th className="text-left font-semibold px-3 py-3">Action</th>
-              <th className="w-10"><span className="sr-only">Remove</span></th>
+              <th className="text-left font-semibold px-3 py-3 whitespace-nowrap">Next physical date</th>
+              <th className="w-10">
+                <span className="sr-only">Remove</span>
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-navy/5">
@@ -236,7 +260,10 @@ export function PatientList({ patients, actions, busyId }: { patients: Patient[]
                     <OutreachDue p={p} a={actions} />
                   </td>
                   <td className="px-3 py-3">
-                    <Actions p={p} a={actions} stage={stage} busy={busyId === p.id} />
+                    <ActionCell p={p} a={actions} stage={stage} busy={busyId === p.id} />
+                  </td>
+                  <td className="px-3 py-3 whitespace-nowrap">
+                    <ScheduleCell p={p} a={actions} />
                   </td>
                   <td className="pr-3 text-right">
                     <RemoveButton p={p} a={actions} />
@@ -275,8 +302,12 @@ export function PatientList({ patients, actions, busyId }: { patients: Patient[]
                   </dd>
                 </div>
               </dl>
-              <div className="mt-3">
-                <Actions p={p} a={actions} stage={stage} busy={busyId === p.id} />
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <ActionCell p={p} a={actions} stage={stage} busy={busyId === p.id} />
+              </div>
+              <div className="mt-2">
+                <dt className="text-xs text-muted mb-1">Next physical date</dt>
+                <ScheduleCell p={p} a={actions} />
               </div>
             </div>
           );

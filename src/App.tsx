@@ -326,13 +326,13 @@ function Tracker({ source, user, demo, onSignOut }: { source: DataSource; user: 
   return (
     <div className="min-h-screen">
       <div className="bg-navy text-white">
-        <div className="max-w-6xl mx-auto px-4 py-3">
+        <div className="max-w-7xl mx-auto px-4 py-3">
           <h1 className="font-serif text-2xl sm:text-3xl font-semibold tracking-tight">Annual Physicals Tracker</h1>
         </div>
       </div>
 
       <header className="sticky top-0 z-30 bg-cream/95 backdrop-blur border-b border-navy/10">
-        <div className="max-w-6xl mx-auto px-4 py-2.5 flex flex-wrap items-center gap-x-3 gap-y-2">
+        <div className="max-w-7xl mx-auto px-4 py-2.5 flex flex-wrap items-center gap-x-3 gap-y-2">
           {panels.length > 0 && (
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold uppercase tracking-wide text-muted">Practice</span>
@@ -371,7 +371,7 @@ function Tracker({ source, user, demo, onSignOut }: { source: DataSource; user: 
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-5">
+      <main className="max-w-7xl mx-auto px-4 py-5">
         <div className="flex flex-wrap gap-2">
           <Chip on={filter === "all"} onClick={() => setFilter("all")} label="All" n={patients.length} />
           {STAGE_ORDER.map((s) => (
