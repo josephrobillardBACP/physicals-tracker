@@ -180,17 +180,23 @@ To try it before touching DNS, skip straight to 5.3 and set the from address to
 The Firebase CLI runs `npm install`, which fails inside a Google Drive folder.
 Copy the project to a local folder first, or pause Drive sync.
 
-First set the two non-secret settings. Copy `functions/.env.example` to
-`functions/.env` and edit if needed:
+**`functions/.env` already exists** at
+`G:\My Drive\Code\physicals-trackerunctions\.env`, filled in with safe
+starting values. It is gitignored, so it never leaves your machine. Open it and
+change these two when you are ready:
 
 ```
-MAIL_FROM=Annual Physicals <physicals@blueangelclinical.com>
-APP_URL=https://physicals.blueangelclinical.com
+MAIL_FROM="Annual Physicals <onboarding@resend.dev>"
+APP_URL="https://josephrobillardbacp.github.io/physicals-tracker/"
 ```
 
-If you have not verified the domain in Resend yet, set
-`MAIL_FROM=onboarding@resend.dev` for now. If you skipped Part 3, point
-`APP_URL` at the github.io address instead.
+- `MAIL_FROM` starts as `onboarding@resend.dev`, which Resend lets anyone send
+  from without verifying anything. Once your domain is verified in step 5.2,
+  change it to `physicals@blueangelclinical.com`.
+- `APP_URL` starts as the github.io address. Change it to
+  `https://physicals.blueangelclinical.com` once the custom domain is live.
+
+Changing either one means redeploying for it to take effect.
 
 Then deploy:
 
@@ -204,7 +210,11 @@ npm install
 cd ..
 
 firebase functions:secrets:set RESEND_API_KEY
-# paste the re_... key when prompted, then:
+# paste the re_... key from step 5.2 when prompted
+
+firebase functions:secrets:set TRIGGER_KEY
+# paste any random string you invent — this is only the password for the
+# manual test URL in step 5.5. Keep a copy.
 
 firebase deploy --only functions
 ```
@@ -224,12 +234,17 @@ The very first scheduled run quietly records who is already overdue without
 emailing, so you do not get a blast about the existing backlog. That means you
 will not see an email until a patient newly crosses the line.
 
-To check the wiring now, open this once in a browser, substituting your Resend
-key. The `force=1` makes it treat everyone currently due as new:
+To check the wiring now, open this once in a browser, substituting the
+TRIGGER_KEY you invented. The `force=1` makes it treat everyone currently due
+as new, so you get a real email straight away:
 
 ```
-https://us-central1-travel-medicine-workflow-ee312.cloudfunctions.net/runOutreachCheckNow?key=YOUR_RESEND_KEY&force=1
+https://us-central1-travel-medicine-workflow-ee312.cloudfunctions.net/runOutreachCheckNow?key=YOUR_TRIGGER_KEY&force=1
 ```
+
+The exact address is printed at the end of the deploy. It is deliberately not
+the Resend key here: anything in a URL ends up in browser history and server
+logs, so the trigger key is a throwaway password that can do nothing else.
 
 It replies with a line per practice saying what it did. Drop the `&force=1` to
 see a normal run, which should say "nothing new".
@@ -247,7 +262,9 @@ Logs are under **Firebase console → Functions → Logs**, or `firebase functio
 | "You don't have access to the physicals data" | The rules in step 1.3 were not published, or were pasted outside the `match /databases/{database}/documents` block. |
 | Sign-in works but the list never loads | Open the browser console. A `permission-denied` message points back at step 1.3. |
 | The page loads blank | Check the Actions run finished green, and that Pages source is set to GitHub Actions. |
-| No email ever arrives | Check the bell list is not empty, then check Functions logs. A line saying "nobody is on the recipient list" means step 5.4. |
+| No email ever arrives | Check the Email settings list is not empty, then check Functions logs. A line saying "nobody is on the recipient list" means step 5.4. |
+| The test URL returns "Forbidden" | The `key` does not match TRIGGER_KEY, or that secret was never set. |
+| Logs say "first run, recorded N already due" | Expected on the very first run. Add `&force=1` to actually send. |
 | Resend returns 403 | The domain is not verified yet, or the from address does not match the verified domain. |
 
 ## Granting access to someone outside the domain

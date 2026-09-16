@@ -27,6 +27,9 @@ const ROOT = "physicals";
 const TIMEZONE = "America/Los_Angeles";
 
 const RESEND_API_KEY = defineSecret("RESEND_API_KEY");
+// Separate from the Resend key on purpose: this one travels in a URL, so it
+// must not be a credential that can do anything else.
+const TRIGGER_KEY = defineSecret("TRIGGER_KEY");
 const MAIL_FROM = defineString("MAIL_FROM", { default: "Annual Physicals <physicals@blueangelclinical.com>" });
 const APP_URL = defineString("APP_URL", { default: "https://physicals.blueangelclinical.com" });
 
@@ -164,9 +167,11 @@ export const dailyOutreachEmail = onSchedule(
  * on its own is not enough to fire it.
  */
 export const runOutreachCheckNow = onRequest(
-  { secrets: [RESEND_API_KEY], region: "us-central1" },
+  { secrets: [RESEND_API_KEY, TRIGGER_KEY], region: "us-central1" },
   async (req, res) => {
-    if (req.query.key !== RESEND_API_KEY.value()) {
+    const supplied = req.get("x-trigger-key") ?? req.query.key;
+    const expected = TRIGGER_KEY.value();
+    if (!expected || supplied !== expected) {
       res.status(403).send("Forbidden");
       return;
     }
