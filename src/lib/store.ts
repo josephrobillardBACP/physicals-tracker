@@ -4,6 +4,8 @@ import { Patient, PatientInput, User } from "./types";
 export interface Panel {
   id: string;
   title: string;
+  /** Who gets the daily "new physicals need booking" email for this practice. */
+  notifyEmails: string[];
 }
 
 export interface DataSource {
@@ -18,4 +20,7 @@ export interface DataSource {
 
   /** One-time bulk load from a spreadsheet export. */
   importPatients?(panel: Panel, rows: PatientInput[], user: User): Promise<number>;
+
+  /** Replace the daily-email recipients for a practice. */
+  setNotifyEmails?(panel: Panel, emails: string[]): Promise<void>;
 }

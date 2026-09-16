@@ -1,6 +1,7 @@
-import { ChevronDown, LogOut, Plus, RefreshCw, Search, Upload } from "lucide-react";
+import { Bell, ChevronDown, LogOut, Plus, RefreshCw, Search, Upload } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AddPatientDialog } from "./components/AddPatientDialog";
+import { NotificationsDialog } from "./components/NotificationsDialog";
 import { PatientDrawer } from "./components/PatientDrawer";
 import { PatientList } from "./components/PatientList";
 import { SignIn } from "./components/SignIn";
@@ -87,6 +88,7 @@ function Tracker({ source, user, demo, onSignOut }: { source: DataSource; user: 
   const [busyId, setBusyId] = useState<string | null>(null);
   const [removing, setRemoving] = useState<Patient | null>(null);
   const [importing, setImporting] = useState(false);
+  const [editingNotify, setEditingNotify] = useState(false);
 
   /**
    * Rows stay put while staff work. `orderIds` is the frozen order, recomputed
@@ -351,6 +353,19 @@ function Tracker({ source, user, demo, onSignOut }: { source: DataSource; user: 
                 </select>
                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted pointer-events-none" aria-hidden="true" />
               </label>
+              {source.setNotifyEmails && panel && (
+                <button
+                  className="btn-ghost px-2"
+                  onClick={() => setEditingNotify(true)}
+                  title={`Daily email for ${panel.title}`}
+                  aria-label={`Daily email for ${panel.title}`}
+                >
+                  <Bell className="h-4 w-4" />
+                  {panel.notifyEmails.length > 0 && (
+                    <span className="rounded-full bg-azure/15 px-1.5 text-xs font-semibold text-navy">{panel.notifyEmails.length}</span>
+                  )}
+                </button>
+              )}
             </div>
           )}
 
@@ -499,6 +514,20 @@ function Tracker({ source, user, demo, onSignOut }: { source: DataSource; user: 
             will be taken off {panel?.title}&rsquo;s list. You can undo this straight afterwards.
           </p>
         </Modal>
+      )}
+
+      {editingNotify && panel && source.setNotifyEmails && (
+        <NotificationsDialog
+          panel={panel}
+          onClose={() => setEditingNotify(false)}
+          onSave={async (emails) => {
+            await source.setNotifyEmails!(panel, emails);
+            const next = { ...panel, notifyEmails: emails };
+            setPanel(next);
+            setPanels((list) => list.map((p) => (p.id === next.id ? next : p)));
+            toast({ kind: "ok", text: emails.length ? `Daily email set for ${emails.length} ${emails.length === 1 ? "person" : "people"}.` : `Daily email off for ${panel.title}.` });
+          }}
+        />
       )}
 
       {adding && panel && <AddPatientDialog doctor={panel.title} onClose={() => setAdding(false)} onSave={add} />}

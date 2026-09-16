@@ -54,9 +54,15 @@ const wait = () => new Promise((r) => setTimeout(r, 150));
 
 export class DemoSource implements DataSource {
   private data: Record<string, Patient[]> = structuredClone(seed);
+  private notify: Record<string, string[]> = { "Dr. Sujansky": ["frontdesk@example.com"], "Dr. Daniher": [] };
 
   async listPanels(): Promise<Panel[]> {
-    return Object.keys(this.data).map((k) => ({ id: k, title: k }));
+    return Object.keys(this.data).map((k) => ({ id: k, title: k, notifyEmails: this.notify[k] ?? [] }));
+  }
+
+  async setNotifyEmails(panel: Panel, emails: string[]): Promise<void> {
+    await wait();
+    this.notify[panel.id] = emails;
   }
   async listPatients(panel: Panel): Promise<Patient[]> {
     await wait();

@@ -1,56 +1,42 @@
 # Connecting the tracker to Firebase
 
-Everything below is done in a browser. No code changes are needed. Sign in as
-**joseph@blueangelclinical.com** throughout.
+Everything below is done in a browser except Part 5, which needs a terminal.
+Sign in as **joseph@blueangelclinical.com** throughout.
 
-Reusing the travel medicine Firebase project on purpose: staff already signed in
-there, so nothing new has to be approved by them.
+The travel medicine Firebase project is reused on purpose: staff already signed
+in there, so nothing new has to be approved by them.
 
 ---
 
-## Part 1 — Firebase console (about 10 minutes)
+## Part 1 — Firebase console
 
-### 1.1 Open the project
+### 1.1 The app is already registered
 
-1. Go to <https://console.firebase.google.com/>.
-2. Open the project that runs the travel medicine workflow. It is the one whose
-   ID starts with **travel-medicine-workflow**.
+You registered the web app and sent me its config, so these are the values to
+use. They are public. They identify the project, they do not grant access.
+Access is decided by sign-in and by the rules in step 1.3.
 
-### 1.2 Register the app and copy its config
+```
+VITE_FIREBASE_API_KEY          AIzaSyDb84xpoq9Z4NRUJ3xu3f_qj-qzHsMM-f8
+VITE_FIREBASE_AUTH_DOMAIN      travel-medicine-workflow-ee312.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID       travel-medicine-workflow-ee312
+VITE_FIREBASE_STORAGE_BUCKET   travel-medicine-workflow-ee312.firebasestorage.app
+VITE_FIREBASE_SENDER_ID        814155807315
+VITE_FIREBASE_APP_ID           1:814155807315:web:8ef90a29df4c8420a424a6
+VITE_ALLOWED_DOMAIN            blueangelclinical.com
+```
 
-1. Click the **gear icon** beside "Project Overview", then **Project settings**.
-2. Stay on the **General** tab and scroll to **Your apps**.
-3. Click **Add app** and choose the web icon, **`</>`**.
-4. App nickname: `Physicals Tracker`. **Leave "Also set up Firebase Hosting" unticked** — GitHub Pages does the hosting.
-5. Click **Register app**.
-6. A `firebaseConfig` block appears. Keep this tab open, you need six values from it:
-
-   | In the config | Goes into the variable |
-   | --- | --- |
-   | `apiKey` | `VITE_FIREBASE_API_KEY` |
-   | `authDomain` | `VITE_FIREBASE_AUTH_DOMAIN` |
-   | `projectId` | `VITE_FIREBASE_PROJECT_ID` |
-   | `storageBucket` | `VITE_FIREBASE_STORAGE_BUCKET` |
-   | `messagingSenderId` | `VITE_FIREBASE_SENDER_ID` |
-   | `appId` | `VITE_FIREBASE_APP_ID` |
-
-   These are public values. They identify the project, they do not grant access.
-   Access is decided by sign-in and by the rules in step 1.4.
-
-   If you would rather not add an app, the existing travel medicine app's config
-   works too. Only `appId` differs between apps in the same project.
-
-### 1.3 Allow the site to sign people in
+### 1.2 Allow the site to sign people in
 
 1. Left sidebar: **Build → Authentication**.
-2. **Sign-in method** tab. Confirm **Google** is listed as Enabled. It will be, from travel medicine. If not, enable it.
+2. **Sign-in method** tab. Confirm **Google** is Enabled. It will be, from travel medicine.
 3. **Settings** tab → **Authorised domains** → **Add domain**, twice:
    - `physicals.blueangelclinical.com`
    - `josephrobillardbacp.github.io`
 
    Sign-in fails with an "unauthorised domain" error if these are missing.
 
-### 1.4 Add the security rules
+### 1.3 Add the security rules
 
 This is the step that protects the patient data, so do not skip it.
 
@@ -85,7 +71,7 @@ This is the step that protects the patient data, so do not skip it.
     match /physicals/{panelId} {
       allow read, write: if physicalsStaff();
 
-      match /patients/{patientId} {
+      match /{document=**} {
         allow read, write: if physicalsStaff();
       }
     }
@@ -99,7 +85,7 @@ first time it runs.
 
 ---
 
-## Part 2 — GitHub (about 5 minutes)
+## Part 2 — GitHub
 
 Go to <https://github.com/josephrobillardBACP/physicals-tracker>.
 
@@ -110,17 +96,7 @@ Go to <https://github.com/josephrobillardBACP/physicals-tracker>.
 ### 2.2 Add the seven variables
 
 **Settings → Secrets and variables → Actions → Variables** tab (not Secrets).
-Click **New repository variable** and add each of these:
-
-```
-VITE_FIREBASE_API_KEY          <apiKey from step 1.2>
-VITE_FIREBASE_AUTH_DOMAIN      <authDomain>
-VITE_FIREBASE_PROJECT_ID       <projectId>
-VITE_FIREBASE_STORAGE_BUCKET   <storageBucket>
-VITE_FIREBASE_SENDER_ID        <messagingSenderId>
-VITE_FIREBASE_APP_ID           <appId>
-VITE_ALLOWED_DOMAIN            blueangelclinical.com
-```
+Click **New repository variable** and add each name and value from step 1.1.
 
 Variables rather than secrets, because they ship inside the JavaScript bundle
 anyway. Putting them in Secrets would only hide them from you, not from anyone
@@ -170,15 +146,109 @@ Then send the link to the front office. Anyone with a
 
 ---
 
+## Part 5 — The daily outreach email (optional, do it last)
+
+Once a day at 7am Pacific, each practice's recipients get an email if any of
+their patients have **newly** come due for outreach. A patient who has been
+waiting a while does not trigger another email. The message contains a count and
+a link, never patient names.
+
+### 5.1 Upgrade the Firebase project to Blaze
+
+Scheduled functions need the pay-as-you-go plan.
+
+1. Firebase console → gear icon → **Usage and billing** → **Details & settings**.
+2. **Modify plan** → **Blaze** → link or create a Cloud Billing account.
+3. While you are there, set a **budget alert** at a few dollars for peace of mind.
+
+One run a day sits far inside the free allowance, so the real cost is nil. The
+upgrade is about having a billing account attached, not about spending.
+
+### 5.2 Set up Resend
+
+1. Sign up at <https://resend.com>.
+2. **Domains → Add Domain** → `blueangelclinical.com`.
+3. Resend shows a handful of DNS records. Add them at the same provider you used
+   in Part 3, then wait for it to verify.
+4. **API Keys → Create API Key**. Copy it; it starts with `re_`. You only see it once.
+
+To try it before touching DNS, skip straight to 5.3 and set the from address to
+`onboarding@resend.dev`, which Resend lets anyone send from for testing.
+
+### 5.3 Deploy the function
+
+The Firebase CLI runs `npm install`, which fails inside a Google Drive folder.
+Copy the project to a local folder first, or pause Drive sync.
+
+First set the two non-secret settings. Copy `functions/.env.example` to
+`functions/.env` and edit if needed:
+
+```
+MAIL_FROM=Annual Physicals <physicals@blueangelclinical.com>
+APP_URL=https://physicals.blueangelclinical.com
+```
+
+If you have not verified the domain in Resend yet, set
+`MAIL_FROM=onboarding@resend.dev` for now. If you skipped Part 3, point
+`APP_URL` at the github.io address instead.
+
+Then deploy:
+
+```bash
+npm install -g firebase-tools
+firebase login
+firebase use travel-medicine-workflow-ee312
+
+cd functions
+npm install
+cd ..
+
+firebase functions:secrets:set RESEND_API_KEY
+# paste the re_... key when prompted, then:
+
+firebase deploy --only functions
+```
+
+The first deploy asks to enable a few Google APIs, Cloud Scheduler among them.
+Say yes.
+
+### 5.4 Choose who gets the email
+
+In the app, pick a practice and click the **bell** beside the Practice dropdown.
+Add the front office addresses for that practice and save. Do the same for the
+other practice. Each list only ever hears about its own patients.
+
+### 5.5 Test it
+
+The very first scheduled run quietly records who is already overdue without
+emailing, so you do not get a blast about the existing backlog. That means you
+will not see an email until a patient newly crosses the line.
+
+To check the wiring now, open this once in a browser, substituting your Resend
+key. The `force=1` makes it treat everyone currently due as new:
+
+```
+https://us-central1-travel-medicine-workflow-ee312.cloudfunctions.net/runOutreachCheckNow?key=YOUR_RESEND_KEY&force=1
+```
+
+It replies with a line per practice saying what it did. Drop the `&force=1` to
+see a normal run, which should say "nothing new".
+
+Logs are under **Firebase console → Functions → Logs**, or `firebase functions:log`.
+
+---
+
 ## If something goes wrong
 
 | What you see | What it means |
 | --- | --- |
-| "Sign-in isn't configured yet" | The seven variables are missing or the workflow ran before you added them. Add them, then re-run the workflow. |
-| A Google error about an unauthorised domain | Step 1.3 was skipped for that address. |
-| "You don't have access to the physicals data" | The rules in step 1.4 were not published, or were pasted outside the `match /databases/{database}/documents` block. |
-| Sign-in works but the list never loads | Open the browser console. A `permission-denied` message points back at step 1.4. |
+| "Sign-in isn't configured yet" | The seven variables are missing, or the workflow ran before you added them. Add them, then re-run the workflow. |
+| A Google error about an unauthorised domain | Step 1.2 was skipped for that address. |
+| "You don't have access to the physicals data" | The rules in step 1.3 were not published, or were pasted outside the `match /databases/{database}/documents` block. |
+| Sign-in works but the list never loads | Open the browser console. A `permission-denied` message points back at step 1.3. |
 | The page loads blank | Check the Actions run finished green, and that Pages source is set to GitHub Actions. |
+| No email ever arrives | Check the bell list is not empty, then check Functions logs. A line saying "nobody is on the recipient list" means step 5.4. |
+| Resend returns 403 | The domain is not verified yet, or the from address does not match the verified domain. |
 
 ## Granting access to someone outside the domain
 

@@ -38,7 +38,8 @@ service cloud.firestore {
     match /physicals/{panelId} {
       allow read, write: if physicalsStaff();
 
-      match /patients/{patientId} {
+      // Patients, and the small doc the daily email job keeps its state in.
+      match /{document=**} {
         allow read, write: if physicalsStaff();
       }
     }

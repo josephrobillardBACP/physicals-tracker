@@ -27,6 +27,17 @@ Filter chips across the top show live counts. Search matches name, date of birth
 
 **Correcting a date:** double-click the last physical or the outreach due date in the table, or click the pencil that appears on hover. Enter saves, Escape cancels. An outreach date typed by hand is marked "set by hand" and overrides the 11-month rule until you click the reset arrow to go back to the calculated date.
 
+## Daily outreach email
+
+Once a day at 7am Pacific a Cloud Function checks each practice for patients who
+have **newly** come due for outreach and emails that practice's recipients. A
+patient already in the pile does not trigger another email; the run stores which
+patients it has reported and only reports the difference. The message carries a
+count and a link, never patient names, so no patient data leaves the database.
+
+Manage the recipients with the bell beside the Practice dropdown. An empty list
+means no email for that practice. See `functions/` and Part 5 of SETUP.md.
+
 ## Who can get in
 
 Two layers, both already in place for the travel medicine app:
@@ -97,4 +108,8 @@ src/
   lib/demo.ts             in-memory sample data
   components/             UI
 firestore.rules           server-side access rules
+functions/
+  src/index.ts            daily check and the email it sends
+  src/due.ts              needs-outreach rule (mirrors src/lib/logic.ts)
+  test-due.cjs            checks that rule against known cases
 ```

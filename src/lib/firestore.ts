@@ -36,6 +36,10 @@ const DEFAULT_PANELS = [
   { id: "daniher", title: "Dr. Daniher", order: 2 },
 ];
 
+function toEmails(v: unknown): string[] {
+  return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+}
+
 function patientsRef(panelId: string) {
   return collection(db(), ROOT, panelId, "patients");
 }
@@ -94,9 +98,13 @@ export class FirestoreSource implements DataSource {
           batch.set(doc(db(), ROOT, p.id), { title: p.title, order: p.order });
         }
         await batch.commit();
-        return DEFAULT_PANELS.map((p) => ({ id: p.id, title: p.title }));
+        return DEFAULT_PANELS.map((p) => ({ id: p.id, title: p.title, notifyEmails: [] }));
       }
-      return snap.docs.map((d) => ({ id: d.id, title: (d.data().title as string) ?? d.id }));
+      return snap.docs.map((d) => ({
+        id: d.id,
+        title: (d.data().title as string) ?? d.id,
+        notifyEmails: toEmails(d.data().notifyEmails),
+      }));
     } catch (e) {
       throw friendly(e);
     }
@@ -154,6 +162,14 @@ export class FirestoreSource implements DataSource {
   async deletePatient(panel: Panel, id: string): Promise<void> {
     try {
       await deleteDoc(doc(patientsRef(panel.id), id));
+    } catch (e) {
+      throw friendly(e);
+    }
+  }
+
+  async setNotifyEmails(panel: Panel, emails: string[]): Promise<void> {
+    try {
+      await updateDoc(doc(db(), ROOT, panel.id), { notifyEmails: emails });
     } catch (e) {
       throw friendly(e);
     }
