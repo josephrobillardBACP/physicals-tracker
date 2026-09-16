@@ -78,9 +78,15 @@ export async function signIn(silent = false, loginHint?: string): Promise<Sessio
   if (!res.ok) throw new Error("Could not read your Google profile.");
   const info = (await res.json()) as { email: string; name?: string; picture?: string; hd?: string };
 
-  if (ALLOWED_DOMAIN && !info.email.toLowerCase().endsWith("@" + ALLOWED_DOMAIN.toLowerCase())) {
+  // Only accounts that belong to the clinic's Google Workspace may use the app. Google reports the
+  // Workspace domain in `hd`; the e-mail suffix check is a fallback for older token responses.
+  const domainOk =
+    !ALLOWED_DOMAIN ||
+    (info.hd ?? "").toLowerCase() === ALLOWED_DOMAIN.toLowerCase() ||
+    info.email.toLowerCase().endsWith("@" + ALLOWED_DOMAIN.toLowerCase());
+  if (!domainOk) {
     gis().revoke?.(token.access_token, () => {});
-    throw new Error(`Please sign in with your @${ALLOWED_DOMAIN} account.`);
+    throw new Error(`Please sign in with your @${ALLOWED_DOMAIN} work account, not a personal Google account.`);
   }
 
   const session: Session = {

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ALLOWED_DOMAIN, CLIENT_ID } from "../lib/auth";
 import { Logo, Spinner } from "./ui";
 
-export function SignIn({ onSignIn, onDemo }: { onSignIn: () => Promise<void>; onDemo?: () => void }) {
+export function SignIn({ onSignIn, onDemo, notice }: { onSignIn: () => Promise<void>; onDemo?: () => void; notice?: string | null }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,8 +22,7 @@ export function SignIn({ onSignIn, onDemo }: { onSignIn: () => Promise<void>; on
     <main className="min-h-screen flex items-center justify-center p-6">
       <div className="card w-full max-w-md p-8 text-center">
         <Logo className="h-14 w-14 mx-auto" />
-        <p className="mt-5 text-xs font-semibold uppercase tracking-[0.2em] text-muted">Blue Angel Clinical Partners</p>
-        <h1 className="mt-2 font-serif text-4xl font-semibold text-navy">Annual Physicals</h1>
+        <h1 className="mt-5 font-serif text-4xl font-semibold text-navy">Annual Physicals Tracker</h1>
         <p className="mt-3 text-sm text-muted">
           Track who is due for an annual physical, log outreach, and schedule visits.
           {ALLOWED_DOMAIN && (
@@ -45,6 +44,7 @@ export function SignIn({ onSignIn, onDemo }: { onSignIn: () => Promise<void>; on
           </p>
         )}
 
+        {notice && !error && <p className="mt-4 rounded-xl bg-sky-50 text-sky-900 text-sm p-3">{notice}</p>}
         {error && <p className="mt-4 text-sm text-red-700">{error}</p>}
 
         {onDemo && (

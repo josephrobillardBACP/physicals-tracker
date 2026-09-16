@@ -27,6 +27,7 @@ export default function App() {
 function Root() {
   const [session, setSession] = useState<Session | null>(() => loadSession());
   const [demo, setDemo] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const sessionRef = useRef(session);
   sessionRef.current = session;
 
@@ -36,9 +37,18 @@ function Root() {
     return new SheetsSource(SHEET_ID, async () => {
       const s = sessionRef.current;
       if (s && s.expiresAt > Date.now()) return s.accessToken;
-      const fresh = await signIn(true, s?.user.email);
-      setSession(fresh);
-      return fresh.accessToken;
+      try {
+        const fresh = await signIn(true, s?.user.email);
+        setSession(fresh);
+        return fresh.accessToken;
+      } catch (e) {
+        // Silent refresh failed (popup blocked, consent revoked, signed out of Google):
+        // send the user back to the sign-in screen instead of leaving a broken session.
+        saveSession(null);
+        setSession(null);
+        setNotice("Your session expired. Please sign in again.");
+        throw e;
+      }
     });
   }, [demo, session?.user.email]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -47,8 +57,12 @@ function Root() {
   if (!source || !user) {
     return (
       <SignIn
-        onSignIn={async () => setSession(await signIn(false))}
+        onSignIn={async () => {
+          setSession(await signIn(false));
+          setNotice(null);
+        }}
         onDemo={DEMO_ALLOWED ? () => setDemo(true) : undefined}
+        notice={notice}
       />
     );
   }
@@ -226,10 +240,7 @@ function Tracker({ source, user, demo, onSignOut }: { source: DataSource; user: 
         <div className="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-3 mr-2">
             <Logo />
-            <div className="leading-tight">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted">Blue Angel</p>
-              <h1 className="font-serif text-2xl font-semibold text-navy">Annual Physicals</h1>
-            </div>
+            <h1 className="font-serif text-2xl font-semibold text-navy leading-tight">Annual Physicals Tracker</h1>
           </div>
 
           {panels.length > 0 && (
