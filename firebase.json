@@ -4,7 +4,7 @@
       "source": "functions",
       "codebase": "physicals",
       "ignore": ["node_modules", ".git", "lib", "*.local"],
-      "predeploy": ["npm --prefix \"$RESOURCE_DIR\" run build"]
+      "predeploy": ["npm --prefix functions run build"]
     }
   ],
   "firestore": {
