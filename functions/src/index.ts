@@ -5,6 +5,7 @@ import { logger } from "firebase-functions/v2";
 import { onRequest } from "firebase-functions/v2/https";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { needsOutreach, PatientRecord } from "./due";
+import { outreachEmail, sendViaResend } from "./email";
 
 /**
  * Once a day, tell each practice's front office if any of their patients have
@@ -40,50 +41,6 @@ interface PanelDoc {
 
 function recipients(d: PanelDoc): string[] {
   return Array.isArray(d.notifyEmails) ? d.notifyEmails.filter((x): x is string => typeof x === "string") : [];
-}
-
-async function sendEmail(to: string[], subject: string, html: string, text: string): Promise<void> {
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${RESEND_API_KEY.value()}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ from: MAIL_FROM.value(), to, subject, html, text }),
-  });
-  if (!res.ok) {
-    throw new Error(`Resend returned ${res.status}: ${await res.text()}`);
-  }
-}
-
-function body(practice: string, count: number, url: string) {
-  const noun = count === 1 ? "patient" : "patients";
-  const verb = count === 1 ? "needs" : "need";
-  const text =
-    `${count} ${noun} on ${practice}'s list ${verb} a physical booked.\n\n` +
-    `Open the tracker: ${url}\n\n` +
-    `You are getting this because a patient came due for outreach today. ` +
-    `You will not be reminded again about the same patients.`;
-
-  const html = `<!doctype html>
-<div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#263D4F;line-height:1.5">
-  <div style="background:#063862;color:#fff;padding:16px 20px;font-size:18px;font-weight:600">Annual Physicals Tracker</div>
-  <div style="padding:20px">
-    <p style="margin:0 0 16px;font-size:16px">
-      <strong>${count} ${noun}</strong> on <strong>${practice}</strong>'s list ${verb} a physical booked.
-    </p>
-    <p style="margin:0 0 24px">
-      <a href="${url}" style="background:#063862;color:#fff;text-decoration:none;padding:10px 18px;border-radius:999px;display:inline-block;font-weight:600">
-        Open the tracker
-      </a>
-    </p>
-    <p style="margin:0;color:#5B6B7C;font-size:13px">
-      You are getting this because ${count === 1 ? "a patient" : "patients"} came due for outreach today.
-      You will not be reminded again about the same ${noun}.
-    </p>
-  </div>
-</div>`;
-  return { html, text };
 }
 
 /** Returns a short summary of what it did, for logs and the manual test route. */
@@ -132,11 +89,10 @@ async function runDailyCheck(force = false): Promise<string[]> {
     }
 
     const count = newlyDue.length;
-    const { html, text } = body(practice, count, APP_URL.value());
-    const subject = `${count} new physical${count === 1 ? "" : "s"} to book — ${practice}`;
+    const msg = outreachEmail(practice, count, APP_URL.value());
 
     try {
-      await sendEmail(to, subject, html, text);
+      await sendViaResend(RESEND_API_KEY.value(), MAIL_FROM.value(), to, msg);
       update.lastEmailAt = asOf.toISOString();
       update.lastEmailCount = count;
       notes.push(`${practice}: emailed ${to.length} recipient(s) about ${count} newly due`);
