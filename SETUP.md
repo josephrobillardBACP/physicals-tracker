@@ -236,26 +236,49 @@ other practice. Each list only ever hears about its own patients.
 
 ### 5.5 Test it
 
-The very first scheduled run quietly records who is already overdue without
-emailing, so you do not get a blast about the existing backlog. That means you
-will not see an email until a patient newly crosses the line.
+The very first run quietly records who is already overdue without emailing, so
+you do not get a blast about the existing backlog. To prove the whole path
+works, run it once to seed, then deliberately make one patient newly due.
 
-To check the wiring now, open this once in a browser, substituting the
-TRIGGER_KEY you invented. The `force=1` makes it treat everyone currently due
-as new, so you get a real email straight away:
+**a. Add recipients first** (step 5.4), or the run has nobody to email.
+
+**b. Seed the state.** Open Cloud Scheduler:
 
 ```
-https://us-central1-travel-medicine-workflow-ee312.cloudfunctions.net/runOutreachCheckNow?key=YOUR_TRIGGER_KEY&force=1
+https://console.cloud.google.com/cloudscheduler?project=travel-medicine-workflow-ee312
 ```
 
-The exact address is printed at the end of the deploy. It is deliberately not
-the Resend key here: anything in a URL ends up in browser history and server
-logs, so the trigger key is a throwaway password that can do nothing else.
+Find the job whose name contains `dailyOutreachEmail`, click the three dots on
+its row, and choose **Force run**.
 
-It replies with a line per practice saying what it did. Drop the `&force=1` to
-see a normal run, which should say "nothing new".
+**c. Check the logs.** Firebase console → Functions → Logs, or:
 
-Logs are under **Firebase console → Functions → Logs**, or `firebase functions:log`.
+```
+https://console.cloud.google.com/logs/query?project=travel-medicine-workflow-ee312
+```
+
+You should see a line per practice reading
+`first run, recorded N already due, no email sent`. That alone proves the
+function reached Firestore and read the right data.
+
+**d. Make one patient newly due.** In the app, click **Add patient**, give it an
+obvious test name, and leave the last physical blank. A patient with no physical
+on record counts as needing outreach immediately.
+
+**e. Force run again.** The logs should now read
+`emailed 1 recipient(s) about 1 newly due`, and the email should arrive. That is
+the real production path, not a special test mode.
+
+**f. Tidy up.** Delete the test patient with the **x** on its row.
+
+A third force run should report `nothing new`, which is the behaviour you asked
+for: no repeat emails about patients already in the pile.
+
+> The `runOutreachCheckNow` HTTP function also exists, but your organization's
+> policy blocks public access to Cloud Run services, so a plain browser request
+> gets a Google 403 before reaching it. That policy is a sensible default and
+> not worth weakening for a test endpoint. Calling it needs a Google identity
+> token; the Cloud Scheduler route above is easier.
 
 ---
 
@@ -269,7 +292,9 @@ Logs are under **Firebase console → Functions → Logs**, or `firebase functio
 | Sign-in works but the list never loads | Open the browser console. A `permission-denied` message points back at step 1.3. |
 | The page loads blank | Check the Actions run finished green, and that Pages source is set to GitHub Actions. |
 | No email ever arrives | Check the Email settings list is not empty, then check Functions logs. A line saying "nobody is on the recipient list" means step 5.4. |
-| The test URL returns "Forbidden" | The `key` does not match TRIGGER_KEY, or that secret was never set. |
+| The test URL returns a Google 403 page | Expected. Org policy blocks public Cloud Run access. Use the Cloud Scheduler force run in step 5.5 instead. |
+| Build fails: "missing permission on the build service account" | Grant **Cloud Build Service Account** to `<project-number>-compute@developer.gserviceaccount.com` on the project IAM page. Projects under an organization do not get this automatically. |
+| Build fails: "lib/index.js does not exist" | `lib` is being excluded by the `ignore` list in firebase.json. It must ship. |
 | Logs say "first run, recorded N already due" | Expected on the very first run. Add `&force=1` to actually send. |
 | Resend returns 403 | The domain is not verified yet, or the from address does not match the verified domain. |
 
