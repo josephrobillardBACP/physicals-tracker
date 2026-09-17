@@ -1,7 +1,7 @@
 export const CONTACT_STATUSES = [
   "Sent Message",
   "Left Voicemail",
-  "Patient Calling Back",
+  "Coordinating with Patient",
 ] as const;
 export type ContactStatus = (typeof CONTACT_STATUSES)[number];
 
@@ -13,6 +13,20 @@ export type ContactStatus = (typeof CONTACT_STATUSES)[number];
 export type OutreachStatus = "" | ContactStatus | "Physical Booked" | "Completed" | "Not Needed";
 
 export const BOOKED: OutreachStatus = "Physical Booked";
+
+/**
+ * Statuses that earlier versions wrote. Records already in Firestore keep the
+ * old wording until something rewrites them, so every read maps them forward.
+ * Without this a patient someone is actively chasing would read as though no
+ * outreach had started.
+ */
+const RENAMED: Record<string, OutreachStatus> = {
+  "Patient Calling Back": "Coordinating with Patient",
+};
+
+export function normalizeOutreachStatus(raw: string): OutreachStatus {
+  return (RENAMED[raw] ?? raw) as OutreachStatus;
+}
 
 export interface Patient {
   id: string;

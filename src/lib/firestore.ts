@@ -15,7 +15,7 @@ import {
 import { db } from "./firebase";
 import { newId } from "./logic";
 import { DataSource, Panel } from "./store";
-import { OutreachStatus, Patient, PatientInput, User } from "./types";
+import { normalizeOutreachStatus, Patient, PatientInput, User } from "./types";
 
 /**
  * Firestore layout (a dedicated top-level collection, so it cannot collide
@@ -54,7 +54,7 @@ function toPatient(id: string, d: Record<string, unknown>): Patient {
     lastPhysical: s("lastPhysical"),
     nextOutreachOverride: s("nextOutreachOverride"),
     nextPhysical: s("nextPhysical"),
-    outreachStatus: s("outreachStatus") as OutreachStatus,
+    outreachStatus: normalizeOutreachStatus(s("outreachStatus")),
     notes: s("notes"),
     updatedAt: s("updatedAt"),
     updatedBy: s("updatedBy"),

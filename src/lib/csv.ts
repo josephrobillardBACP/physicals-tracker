@@ -1,6 +1,6 @@
 import { parseDate, toSheetDate } from "./dates";
 import { titleCase } from "./logic";
-import { CONTACT_STATUSES, OutreachStatus, PatientInput } from "./types";
+import { CONTACT_STATUSES, normalizeOutreachStatus, OutreachStatus, PatientInput } from "./types";
 
 /** Minimal RFC-4180 reader: handles quoted fields, embedded commas and newlines. */
 export function parseCsv(text: string): string[][] {
@@ -73,6 +73,8 @@ function cleanStatus(v: string): OutreachStatus {
   if (t.includes("child") || t === "not needed") return "Not Needed";
   if (t.includes("book")) return "Physical Booked";
   if (t === "completed" || t === "complete") return "Completed";
+  // Older exports still say "Patient Calling Back".
+  if (t === "patient calling back") return normalizeOutreachStatus("Patient Calling Back");
   const hit = CONTACT_STATUSES.find((s) => s.toLowerCase() === t);
   return hit ?? "";
 }

@@ -5,6 +5,8 @@ const cases = [
   ["physical 12/1/2025 -> due 11/30/2026, not yet",    { lastPhysical: "12/1/2025" }, false],
   ["no physical on record",                            {}, true],
   ["overdue but voicemail left",                       { lastPhysical: "8/1/2025", outreachStatus: "Left Voicemail" }, false],
+  ["overdue but coordinating with patient",            { lastPhysical: "8/1/2025", outreachStatus: "Coordinating with Patient" }, false],
+  ["legacy 'Patient Calling Back' still counts",       { lastPhysical: "8/1/2025", outreachStatus: "Patient Calling Back" }, false],
   ["overdue but visit booked",                         { lastPhysical: "8/1/2025", outreachStatus: "Physical Booked" }, false],
   ["overdue but a date is set",                        { lastPhysical: "8/1/2025", nextPhysical: "10/2/2026" }, false],
   ["child, no physical needed",                        { outreachStatus: "Not Needed" }, false],

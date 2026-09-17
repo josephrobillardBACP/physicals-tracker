@@ -36,7 +36,7 @@ const seed: Record<string, Patient[]> = {
     mk({ firstName: "Lucinda", lastName: "Pratt", dob: "1/8/1938", lastPhysical: d(-400) }),
     mk({ firstName: "Teodoro", lastName: "Mancini", dob: "6/21/1957" }),
     mk({ firstName: "Priya", lastName: "Raghunathan", dob: "4/4/1979", lastPhysical: d(-365), nextPhysical: d(12) }),
-    mk({ firstName: "Winifred", lastName: "Castellanos", dob: "7/19/1934", lastPhysical: d(-390), outreachStatus: "Patient Calling Back" }),
+    mk({ firstName: "Winifred", lastName: "Castellanos", dob: "7/19/1934", lastPhysical: d(-390), outreachStatus: "Coordinating with Patient" }),
     mk({ firstName: "Bartholomew", lastName: "Quist", dob: "12/12/1969", lastPhysical: d(-372), nextPhysical: d(-2), outreachStatus: "Completed" }),
     mk({ firstName: "Anneliese", lastName: "Fortner", dob: "2/27/1946", lastPhysical: d(-200) }),
     mk({ firstName: "Rufus", lastName: "Delacroix", dob: "8/8/1955", lastPhysical: d(-150) }),

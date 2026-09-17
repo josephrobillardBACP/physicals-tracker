@@ -14,7 +14,9 @@ export interface PatientRecord {
   outreachStatus?: string;
 }
 
-const CONTACT_STATUSES = ["Sent Message", "Left Voicemail", "Patient Calling Back"];
+// Both spellings: "Patient Calling Back" was the earlier wording and may still
+// sit in records that nothing has rewritten yet.
+const CONTACT_STATUSES = ["Sent Message", "Left Voicemail", "Coordinating with Patient", "Patient Calling Back"];
 
 export function parseDate(s: string | undefined | null): Date | null {
   if (!s) return null;
