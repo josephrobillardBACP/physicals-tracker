@@ -177,11 +177,19 @@ To try it before touching DNS, skip straight to 5.3 and set the from address to
 
 ### 5.3 Deploy the function
 
-The Firebase CLI runs `npm install`, which fails inside a Google Drive folder.
-Copy the project to a local folder first, or pause Drive sync.
+**Already done for you.** There is a working local checkout at
+`C:\Users\Josep\Code\physicals-tracker` with the function's dependencies
+installed and the Firebase CLI on the machine. Deploy from there, not from the
+Google Drive copy.
 
-**`functions/.env` already exists** at
-`G:\My Drive\Code\physicals-tracker\functions\.env`, filled in with safe
+Why not from Drive: `npm install` writes thousands of small files, and Google
+Drive's sync layer invalidates file handles mid-write, which corrupts
+`node_modules`. Nothing about the app needs Drive; it is only where the folder
+happens to live. Both folders are clones of the same GitHub repo, so
+`git pull` keeps the local one current.
+
+**`functions/.env` already exists** in both checkouts, including
+`C:\Users\Josep\Code\physicals-tracker\functions\.env`, filled in with safe
 starting values. It is gitignored, so it never leaves your machine. Open it and
 change these two when you are ready:
 
@@ -201,26 +209,24 @@ Changing either one means redeploying for it to take effect.
 Then deploy:
 
 ```bash
-npm install -g firebase-tools
-firebase login
-firebase use travel-medicine-workflow-ee312
+cd C:\Users\Josep\Code\physicals-tracker
+git pull
 
-cd functions
-npm install
-cd ..
+firebase login
 
 firebase functions:secrets:set RESEND_API_KEY
 # paste the re_... key from step 5.2 when prompted
 
 firebase functions:secrets:set TRIGGER_KEY
-# paste any random string you invent — this is only the password for the
-# manual test URL in step 5.5. Keep a copy.
+# paste any random string you invent. This is only the password for the
+# manual test URL in step 5.5, nothing else. Keep a copy.
 
 firebase deploy --only functions
 ```
 
-The first deploy asks to enable a few Google APIs, Cloud Scheduler among them.
-Say yes.
+The project is pinned in `.firebaserc`, so there is no project to select and no
+way to deploy to the wrong one by accident. The first deploy asks to enable a
+few Google APIs, Cloud Scheduler among them. Say yes.
 
 ### 5.4 Choose who gets the email
 
