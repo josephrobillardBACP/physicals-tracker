@@ -228,6 +228,36 @@ The project is pinned in `.firebaserc`, so there is no project to select and no
 way to deploy to the wrong one by accident. The first deploy asks to enable a
 few Google APIs, Cloud Scheduler among them. Say yes.
 
+### 5.3b Send from a clinic address instead of resend.dev
+
+Out of the box the sender is `onboarding@resend.dev`, Resend's shared test
+address. It works, but it looks like what it is. To send from your own domain,
+Resend has to prove it is allowed to.
+
+**Verify a subdomain, not the root domain.** In Resend, **Domains → Add Domain**,
+enter `send.blueangelclinical.com`. Resend then asks for a few DNS records
+(an MX record, an SPF TXT record, and a DKIM TXT record) on that subdomain.
+
+The subdomain matters. Your root domain already carries the SPF and DKIM records
+that Google Workspace uses for clinic email. A domain may only have one SPF
+record, so adding a second at the root breaks mail delivery for the whole
+practice. Putting Resend on its own subdomain leaves Workspace completely
+untouched, and there is nothing to merge.
+
+Add the records at the same DNS provider you used for the `physicals` CNAME,
+wait for Resend to show the domain as verified, then change `functions/.env`:
+
+```
+MAIL_FROM="Annual Physicals <physicals@send.blueangelclinical.com>"
+```
+
+and redeploy with `firebase deploy --only functions`. Staff are the only
+recipients, so the subdomain in the address costs nothing.
+
+Getting this right also matters for delivery: mail claiming to be from your
+domain, sent to your own Workspace inboxes, is exactly what Google filters
+hardest when it is not properly authenticated.
+
 ### 5.4 Choose who gets the email
 
 In the app, pick a practice and click **Email settings** at the top right.
@@ -263,7 +293,10 @@ function reached Firestore and read the right data.
 
 **d. Make one patient newly due.** In the app, click **Add patient**, give it an
 obvious test name, and leave the last physical blank. A patient with no physical
-on record counts as needing outreach immediately.
+on record counts as needing outreach immediately. Add it to the practice that
+has recipients, and add it **before** the next run, not after: a run records the
+state as it finds it, so a patient added afterwards only counts on the run after
+that.
 
 **e. Force run again.** The logs should now read
 `emailed 1 recipient(s) about 1 newly due`, and the email should arrive. That is
