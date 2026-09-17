@@ -31,7 +31,7 @@ const RESEND_API_KEY = defineSecret("RESEND_API_KEY");
 // Separate from the Resend key on purpose: this one travels in a URL, so it
 // must not be a credential that can do anything else.
 const TRIGGER_KEY = defineSecret("TRIGGER_KEY");
-const MAIL_FROM = defineString("MAIL_FROM", { default: "Annual Physicals <physicals@blueangelclinical.com>" });
+const MAIL_FROM = defineString("MAIL_FROM", { default: "Annual Physicals <physicals@send.blueangelclinical.com>" });
 const APP_URL = defineString("APP_URL", { default: "https://physicals.blueangelclinical.com" });
 
 interface PanelDoc {
