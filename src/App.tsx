@@ -488,7 +488,7 @@ function Tracker({ source, user, demo, onSignOut }: { source: DataSource; user: 
         </div>
 
         <p className="mt-4 text-xs text-muted text-center">
-          Outreach is due at the end of the month, 11 months after the last physical. The list keeps its order while you work; Refresh re-sorts it.
+          Outreach is due at the end of the month, 10 months after the last physical. The list keeps its order while you work; Refresh re-sorts it.
         </p>
       </main>
 

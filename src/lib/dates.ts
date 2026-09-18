@@ -41,14 +41,20 @@ export function today(): Date {
   return new Date(n.getFullYear(), n.getMonth(), n.getDate());
 }
 
+/** How long after a physical the patient comes up for outreach. */
+export const OUTREACH_MONTHS = 10;
+
 /**
- * Outreach is due at the end of the month 11 months after the last physical.
- * e.g. 8/1/2025 -> 7/31/2026, 2/5/2025 -> 1/31/2026 (matches the original sheet).
+ * Outreach is due at the end of the month OUTREACH_MONTHS after the last
+ * physical, e.g. at 10 months 8/1/2025 -> 6/30/2026 and 2/5/2025 -> 12/31/2025.
+ *
+ * Day 0 of a month is the last day of the month before it, so the offset is
+ * one more than the number of months.
  */
 export function nextOutreachFor(lastPhysical: string): string {
   const d = parseDate(lastPhysical);
   if (!d) return "";
-  return toSheetDate(new Date(d.getFullYear(), d.getMonth() + 12, 0));
+  return toSheetDate(new Date(d.getFullYear(), d.getMonth() + OUTREACH_MONTHS + 1, 0));
 }
 
 export function daysBetween(a: Date, b: Date): number {

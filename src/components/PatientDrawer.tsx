@@ -130,7 +130,7 @@ export function PatientDrawer({
         <div>
           <label className="label" htmlFor="pd-lp">Last physical</label>
           <input id="pd-lp" className="field" type="date" value={lastPhysical} onChange={(e) => setLastPhysical(e.target.value)} />
-          <p className="mt-1 text-xs text-muted">Outreach is due at the end of the month, 11 months later.</p>
+          <p className="mt-1 text-xs text-muted">Outreach is due at the end of the month, 10 months later.</p>
         </div>
         <div>
           <label className="label" htmlFor="pd-od">Outreach due</label>

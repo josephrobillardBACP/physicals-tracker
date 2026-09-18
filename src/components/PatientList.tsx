@@ -77,7 +77,7 @@ function OutreachDue({ p, a }: { p: Patient; a: RowActions }) {
       }
       onReset={
         manual
-          ? () => a.onPatch(p, { nextOutreachOverride: "" }, `${p.firstName} ${p.lastName}: outreach date back to the 11-month rule`)
+          ? () => a.onPatch(p, { nextOutreachOverride: "" }, `${p.firstName} ${p.lastName}: outreach date back to the 10-month rule`)
           : undefined
       }
     >

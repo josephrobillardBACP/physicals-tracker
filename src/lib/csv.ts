@@ -123,7 +123,7 @@ export function readPatientCsv(text: string): CsvImport {
       lastName: titleCase(last),
       dob: cleanDate(get(r, "dob")),
       lastPhysical: cleanDate(get(r, "lastPhysical")),
-      // Deliberately not imported: the 11-month rule recomputes it.
+      // Deliberately not imported: the 10-month rule recomputes it.
       nextOutreachOverride: "",
       nextPhysical: cleanDate(get(r, "nextPhysical")),
       outreachStatus: cleanStatus(get(r, "outreachStatus")),

@@ -27,7 +27,7 @@ function mk(p: Partial<Patient> & Pick<Patient, "firstName" | "lastName">): Pati
   };
 }
 
-// Last physical ~ N days ago -> outreach due at month-end 11 months later.
+// Last physical ~ N days ago -> outreach due at month-end 10 months later.
 const seed: Record<string, Patient[]> = {
   "Dr. Sujansky": [
     mk({ firstName: "Harold", lastName: "Whitcombe", dob: "3/14/1941", lastPhysical: d(-420) }),

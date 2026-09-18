@@ -8,7 +8,9 @@ A web app the front office uses to see which patients are due for an annual phys
 
 ## How it works
 
-Each patient has a last physical date. Outreach is due at the end of the month eleven months later, so a physical on 8/1/2025 comes up for outreach on 7/31/2026.
+Each patient has a last physical date. Outreach is due at the end of the month ten months later, so a physical on 8/1/2025 comes up for outreach on 6/30/2026.
+
+That interval lives in one place, `OUTREACH_MONTHS` in `src/lib/dates.ts`, mirrored by a constant of the same name in `functions/src/due.ts`. Changing it changes every derived date across the app and the daily email. Both must move together.
 
 | Status | When | What staff do |
 | --- | --- | --- |
@@ -27,7 +29,7 @@ Each patient has a last physical date. Outreach is due at the end of the month e
 
 Filter chips across the top show live counts. Search matches name, date of birth, or notes. Clicking a name opens the full record. Every row has a small **x** to take a patient off the list, with a confirmation and an undo.
 
-**Correcting a date:** double-click the last physical or the outreach due date in the table, or click the pencil that appears on hover. Enter saves, Escape cancels. An outreach date typed by hand is marked "set by hand" and overrides the 11-month rule until you click the reset arrow to go back to the calculated date.
+**Correcting a date:** double-click the last physical or the outreach due date in the table, or click the pencil that appears on hover. Enter saves, Escape cancels. An outreach date typed by hand is marked "set by hand" and overrides the 10-month rule until you click the reset arrow to go back to the calculated date.
 
 ## Daily outreach email
 
@@ -101,7 +103,7 @@ Add a document to the `physicals` collection with a `title` and an `order`. It a
 src/
   App.tsx                 sign-in gate, data loading, list ordering, actions
   lib/types.ts            patient model, statuses, sort modes
-  lib/dates.ts            date parsing and the 11-month outreach rule
+  lib/dates.ts            date parsing and the 10-month outreach rule
   lib/logic.ts            status derivation, sorting, roll-forward
   lib/firebase.ts         Firebase app, auth and Firestore handles
   lib/auth.ts             Google sign-in and the access check

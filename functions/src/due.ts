@@ -28,11 +28,14 @@ export function parseDate(s: string | undefined | null): Date | null {
   return isNaN(d.getTime()) ? null : d;
 }
 
-/** End of the month, eleven months after the last physical. */
+/** Keep in step with OUTREACH_MONTHS in src/lib/dates.ts. */
+const OUTREACH_MONTHS = 10;
+
+/** End of the month, OUTREACH_MONTHS after the last physical. */
 export function nextOutreachFor(lastPhysical: string | undefined): string {
   const d = parseDate(lastPhysical);
   if (!d) return "";
-  const end = new Date(d.getFullYear(), d.getMonth() + 12, 0);
+  const end = new Date(d.getFullYear(), d.getMonth() + OUTREACH_MONTHS + 1, 0);
   return `${end.getMonth() + 1}/${end.getDate()}/${end.getFullYear()}`;
 }
 
