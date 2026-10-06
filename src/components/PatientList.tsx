@@ -3,6 +3,7 @@ import { ageFrom, formatShort, fromInputDate, parseDate, relative, today, toInpu
 import { bookedWithoutDate, isOutreachManual, outreachDueFor, stageOf } from "../lib/logic";
 import { BOOKED, CONTACT_STATUSES, OutreachStatus, Patient, PatientInput, Stage, STAGE_LABEL } from "../lib/types";
 import { EditableDate } from "./EditableDate";
+import { EditableNote } from "./EditableNote";
 import { Pill, Spinner } from "./ui";
 
 export interface RowActions {
@@ -192,6 +193,16 @@ function ActionCell({ p, a, stage, busy }: { p: Patient; a: RowActions; stage: S
   }
 }
 
+function NoteCell({ p, a }: { p: Patient; a: RowActions }) {
+  return (
+    <EditableNote
+      value={p.notes}
+      label={`Note for ${p.firstName} ${p.lastName}`}
+      onSave={(v) => a.onPatch(p, { notes: v }, v ? `Note saved for ${p.firstName} ${p.lastName}.` : `Note cleared for ${p.firstName} ${p.lastName}.`)}
+    />
+  );
+}
+
 function RemoveButton({ p, a }: { p: Patient; a: RowActions }) {
   return (
     <button
@@ -243,6 +254,7 @@ export function PatientList({ patients, actions, busyId }: { patients: Patient[]
               <th className="text-left font-semibold px-3 py-3 whitespace-nowrap">Outreach due</th>
               <th className="text-left font-semibold px-3 py-3">Action</th>
               <th className="text-left font-semibold px-3 py-3 whitespace-nowrap">Next physical date</th>
+              <th className="text-left font-semibold px-3 py-3 min-w-[10rem]">Notes</th>
               <th className="w-10">
                 <span className="sr-only">Remove</span>
               </th>
@@ -273,6 +285,9 @@ export function PatientList({ patients, actions, busyId }: { patients: Patient[]
                   </td>
                   <td className="px-3 py-3 whitespace-nowrap">
                     <ScheduleCell p={p} a={actions} />
+                  </td>
+                  <td className="px-3 py-3 align-top min-w-[10rem]">
+                    <NoteCell p={p} a={actions} />
                   </td>
                   <td className="pr-3 text-right">
                     <RemoveButton p={p} a={actions} />
@@ -317,6 +332,10 @@ export function PatientList({ patients, actions, busyId }: { patients: Patient[]
               <div className="mt-2">
                 <dt className="text-xs text-muted mb-1">Next physical date</dt>
                 <ScheduleCell p={p} a={actions} />
+              </div>
+              <div className="mt-2">
+                <dt className="text-xs text-muted mb-1">Notes</dt>
+                <NoteCell p={p} a={actions} />
               </div>
             </div>
           );
